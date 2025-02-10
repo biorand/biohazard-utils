@@ -24,8 +24,14 @@ namespace IntelOrca.Biohazard.Script.Compilation
             {
                 var scanner = new Scanner(_includer, _errors);
                 var reader = new TokenReader(scanner.GetTokens(path));
+                return GetTokens(path, reader);
+            }
+
+            private IEnumerable<Token> GetTokens(string path, TokenReader reader, int state = 0)
+            {
                 var processors = new Func<string, TokenReader, IEnumerable<Token>?>[]
                 {
+                    ProcessIf,
                     ProcessInclude,
                     ProcessDefine,
                     ProcessSymbol,
@@ -33,11 +39,51 @@ namespace IntelOrca.Biohazard.Script.Compilation
                 };
                 while (true)
                 {
-                    if (reader.Peek().Kind == TokenKind.EOF)
+                    var token = reader.Peek();
+                    if (token.Kind == TokenKind.EOF)
                     {
                         yield return reader.Read();
                         break;
                     }
+
+                    if (token.Kind == TokenKind.Directive)
+                    {
+                        var text = token.Text;
+                        if (text == "#elif")
+                        {
+                            if (state == 0)
+                            {
+                                EmitError(in token, ErrorCodes.FoundHashElifOutsideHashIf);
+                            }
+                            else
+                            {
+                                yield break;
+                            }
+                        }
+                        else if (text == "#else")
+                        {
+                            if (state == 0)
+                            {
+                                EmitError(in token, ErrorCodes.FoundHashElseOutsideHashIf);
+                            }
+                            else
+                            {
+                                yield break;
+                            }
+                        }
+                        else if (text == "#endif")
+                        {
+                            if (state == 0)
+                            {
+                                EmitError(in token, ErrorCodes.FoundHashEndifOutsideHashIf);
+                            }
+                            else
+                            {
+                                yield break;
+                            }
+                        }
+                    }
+
                     foreach (var pp in processors)
                     {
                         var expandedTokens = pp(path, reader);
@@ -58,6 +104,7 @@ namespace IntelOrca.Biohazard.Script.Compilation
                 var reader = new TokenReader(tokens);
                 var processors = new Func<string, TokenReader, IEnumerable<Token>?>[]
                 {
+                    ProcessDefined,
                     ProcessSymbol,
                     ProcessPassThrough,
                 };
@@ -75,6 +122,161 @@ namespace IntelOrca.Biohazard.Script.Compilation
                             break;
                         }
                     }
+                }
+            }
+
+            private IEnumerable<Token>? ProcessIf(string path, TokenReader reader)
+            {
+                var token = reader.Peek();
+                if (token.Kind != TokenKind.Directive || token.Text != "#if")
+                    return null;
+
+                reader.Read();
+
+                var body = new Token[0];
+                var condition = ReadPreprocessorCondition(path, reader);
+                if (condition)
+                {
+                    body = ReadPreprocessorBody(path, reader);
+                }
+                else
+                {
+                    SkipNestedPreprocessorTokens(reader);
+                }
+
+                for (; ; )
+                {
+                    token = reader.Read();
+                    if (token.Kind == TokenKind.Directive)
+                    {
+                        if (token.Text == "#elif")
+                        {
+                            var c = ReadPreprocessorCondition(path, reader);
+                            if (!condition && c)
+                            {
+                                condition = true;
+                                body = ReadPreprocessorBody(path, reader);
+                            }
+                            else
+                            {
+                                SkipNestedPreprocessorTokens(reader);
+                            }
+                        }
+                        else if (token.Text == "#else")
+                        {
+                            ReadPreprocessorElseOrEndif(reader);
+                            if (condition)
+                            {
+                                condition = true;
+                                ReadPreprocessorBody(path, reader);
+                            }
+                            else
+                            {
+                                SkipNestedPreprocessorTokens(reader);
+                            }
+                        }
+                        else if (token.Text == "#endif")
+                        {
+                            ReadPreprocessorElseOrEndif(reader);
+                            break;
+                        }
+                        else
+                        {
+                            EmitError(in token, ErrorCodes.NoMatchingHashEndifForHashIf);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        EmitError(in token, ErrorCodes.NoMatchingHashEndifForHashIf);
+                        break;
+                    }
+                }
+                return body;
+            }
+
+            private bool ReadPreprocessorCondition(string path, TokenReader reader)
+            {
+                var conditionTokens = new List<Token>();
+                for (; ; )
+                {
+                    var token = reader.Read();
+                    if (token.Kind == TokenKind.NewLine || token.Kind == TokenKind.EOF)
+                        break;
+                    conditionTokens.Add(token);
+                }
+                conditionTokens = Expand(path, conditionTokens)
+                    .Where(x => x.Kind != TokenKind.Whitespace)
+                    .ToList();
+
+                if (conditionTokens.Count == 0)
+                {
+                    EmitError(reader.Peek(), ErrorCodes.InvalidExpression);
+                    return false;
+                }
+                else if (conditionTokens.Count != 1)
+                {
+                    EmitError(conditionTokens[0], ErrorCodes.InvalidExpression);
+                    return false;
+                }
+
+                return conditionTokens[0].Text != "0";
+            }
+
+            private Token[] ReadPreprocessorBody(string path, TokenReader reader)
+            {
+                return GetTokens(path, reader, state: 1).ToArray();
+            }
+
+            private void ReadPreprocessorElseOrEndif(TokenReader reader)
+            {
+                for (; ; )
+                {
+                    var token = reader.Read();
+                    if (token.Kind == TokenKind.Whitespace)
+                        continue;
+                    if (token.Kind == TokenKind.NewLine)
+                        break;
+                    if (token.Kind == TokenKind.EOF)
+                        break;
+
+                    EmitError(in token, ErrorCodes.InvalidSyntax);
+                    do
+                    {
+                        token = reader.Read();
+                    } while (token.Kind != TokenKind.NewLine && token.Kind != TokenKind.EOF);
+                }
+            }
+
+            private static void SkipNestedPreprocessorTokens(TokenReader reader)
+            {
+                var nestLevel = 0;
+                for (; ; )
+                {
+                    var token = reader.Peek();
+                    if (token.Kind == TokenKind.EOF)
+                    {
+                        return;
+                    }
+                    else if (token.Kind == TokenKind.Directive)
+                    {
+                        if (token.Text == "#if")
+                        {
+                            nestLevel++;
+                        }
+                        else if (token.Text == "#elif" || token.Text == "#else")
+                        {
+                            if (nestLevel == 0)
+                                return;
+                        }
+                        else if (token.Text == "#endif")
+                        {
+                            if (nestLevel == 0)
+                                return;
+                            nestLevel--;
+                        }
+                    }
+                    reader.Read();
                 }
             }
 
@@ -217,6 +419,43 @@ namespace IntelOrca.Biohazard.Script.Compilation
                     tokens.RemoveAt(tokens.Count - 1);
                 }
                 return tokens.ToArray();
+            }
+
+            private IEnumerable<Token>? ProcessDefined(string path, TokenReader reader)
+            {
+                var token = reader.Peek();
+                if (token.Kind != TokenKind.Symbol)
+                    return null;
+
+                if (token.Text != "defined")
+                    return null;
+
+                reader.Read();
+                token = reader.ReadNoWhitespace();
+                if (token.Kind != TokenKind.OpenParen)
+                {
+                    EmitError(in token, ErrorCodes.ExpectedOpenParen);
+                    return null;
+                }
+
+                token = reader.ReadNoWhitespace();
+                if (token.Kind != TokenKind.Symbol)
+                {
+                    EmitError(in token, ErrorCodes.ExpectedMacroName);
+                    return null;
+                }
+                var symbolToken = token;
+
+                token = reader.ReadNoWhitespace();
+                if (token.Kind != TokenKind.CloseParen)
+                {
+                    EmitError(in token, ErrorCodes.ExpectedCloseParen);
+                    return null;
+                }
+
+                var isDefined = _macros.ContainsKey(symbolToken.Text);
+                var value = isDefined ? "1" : "0";
+                return new[] { new Token(value, 0, TokenKind.Number, symbolToken.Path, symbolToken.Line, symbolToken.Column, 1) };
             }
 
             private IEnumerable<Token>? ProcessSymbol(string path, TokenReader reader)

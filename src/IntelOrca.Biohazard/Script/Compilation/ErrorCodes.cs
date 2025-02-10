@@ -44,6 +44,10 @@
         public const int RecursiveMacro = 40;
         public const int EventNotValid = 41;
         public const int ExpectedLabelName = 42;
+        public const int FoundHashElifOutsideHashIf = 43;
+        public const int FoundHashElseOutsideHashIf = 44;
+        public const int FoundHashEndifOutsideHashIf = 45;
+        public const int NoMatchingHashEndifForHashIf = 46;
 
         public static string GetMessage(int code) => _messages[code];
 
@@ -91,7 +95,11 @@
                 "Invalid syntax",
                 "Recursive macro",
                 "Events are only valid in SCD version 1.",
-                "Expected label name."
+                "Expected label name.",
+                "#elif without matching #if directive",
+                "#else without matching #if directive",
+                "#endif without matching #if directive",
+                "No matching #endif found for #if directive"
         };
     }
 }

@@ -468,6 +468,41 @@ proc main
         }
 
         [Fact]
+        public void TestIfDef()
+        {
+            var expected = "0200010004000A00090A320001000100";
+            AssertScd(expected, @"
+#version 2
+
+proc main
+{
+#if defined(DEBUG)
+    sleep(10, 30);
+#endif
+    sleep(10, 50);
+}
+");
+        }
+
+        [Fact]
+        public void TestIfDef_AfterDefine()
+        {
+            var expected = "0200010004000E00090A1E00090A320001000100";
+            AssertScd(expected, @"
+#version 2
+#define DEBUG 1
+
+proc main
+{
+#if defined(DEBUG)
+    sleep(10, 30);
+#endif
+    sleep(10, 50);
+}
+");
+        }
+
+        [Fact]
         public void TestAnonymousProcedure()
         {
             var expected = "0200010006000C000E0004FF180201000100090A1E000100";
