@@ -31,7 +31,7 @@
     </Window.Resources>
     <Window.CommandBindings>
         <CommandBinding Command="{StaticResource OpenCommand}" Executed="OpenCommandBinding_Executed" />
-        <CommandBinding Command="{StaticResource OpenRdtCommand}" Executed="OpenRdtCommandBinding_Executed" />
+        <CommandBinding Command="{StaticResource OpenRdtCommand}" Executed="OpenRdtCommandBinding_Executed" CanExecute="OpenRdtCommandBinding_CanExecute" />
         <CommandBinding Command="{StaticResource SaveCommand}" Executed="SaveCommandBinding_Executed" CanExecute="SaveCommandBinding_CanExecute" />
         <CommandBinding Command="{StaticResource SaveAsCommand}" Executed="SaveAsCommandBinding_Executed" CanExecute="SaveCommandBinding_CanExecute" />
         <CommandBinding Command="{StaticResource ExportForBioRandCommand}" Executed="ExportForBioRandCommandBinding_Executed" CanExecute="SaveCommandBinding_CanExecute" />
@@ -46,7 +46,7 @@
                         <Image Source="{StaticResource IconOpen}"></Image>
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_OpenRdt" Command="{StaticResource OpenRdtCommand}">
+                <MenuItem Header="_Open RDT" Command="{StaticResource OpenRdtCommand}">
                     <MenuItem.Icon>
                         <Image Source="{StaticResource IconOpen}"></Image>
                     </MenuItem.Icon>

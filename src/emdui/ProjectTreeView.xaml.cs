@@ -239,7 +239,7 @@ namespace emdui
                         tvi = new MorphTreeViewItem(projectFile, i, morph);
                         break;
                     case IEdd _:
-                        tvi = new EddTreeViewItem(projectFile, i);
+                        tvi = new EddTreeViewItem(projectFile, i, new ModelEmrEddViewModel(model, i, i + 1));
                         break;
                     case Emr emr:
                         tvi = new EmrTreeViewItem(projectFile, i, emr, isFirstEmr);
@@ -319,17 +319,21 @@ namespace emdui
 
     public class EddTreeViewItem : ChunkTreeViewItem
     {
+        private readonly IEmrEddViewModel _viewModel;
+
         public override ImageSource Image => (ImageSource)Application.Current.Resources["IconEDD"];
         public override string Header => "EDD";
         public IEdd Edd
         {
-            get => Model.GetChunk<IEdd>(ChunkIndex);
-            set => Model.SetChunk<IEdd>(ChunkIndex, value);
+            get => _viewModel.Edd;
+            set => _viewModel.Edd = value;
         }
 
-        public EddTreeViewItem(ProjectFile projectFile, int chunkIndex)
+        public EddTreeViewItem(ProjectFile projectFile, int chunkIndex, IEmrEddViewModel viewModel)
             : base(projectFile, chunkIndex)
         {
+            _viewModel = viewModel;
+
             CreateChildren();
 
             AddMenuItem("Import...", Import);
@@ -381,13 +385,15 @@ namespace emdui
             var numAnimations = Edd.AnimationCount;
             for (var i = 0; i < numAnimations; i++)
             {
-                Items.Add(new AnimationTreeViewItem(this, i));
+                Items.Add(new AnimationTreeViewItem(this, i, _viewModel));
             }
         }
     }
 
     public class AnimationTreeViewItem : ChunkTreeViewItem
     {
+        private readonly IEmrEddViewModel _viewModel;
+
         public override ImageSource Image => (ImageSource)Application.Current.Resources["IconAnimation"];
         public override string Header => $"Animation {Index}";
         public int Index { get; }
@@ -395,19 +401,21 @@ namespace emdui
 
         public IEdd Edd
         {
-            get => Model.GetChunk<IEdd>(ChunkIndex);
-            set => Model.SetChunk(ChunkIndex, value);
+            get => _viewModel.Edd;
+            set => _viewModel.Edd = value;
         }
 
         public Emr Emr
         {
-            get => Model.GetChunk<Emr>(ChunkIndex + 1);
-            set => Model.SetChunk(ChunkIndex + 1, value);
+            get => _viewModel.Emr;
+            set => _viewModel.Emr = value;
         }
 
-        public AnimationTreeViewItem(EddTreeViewItem parent, int index)
+        public AnimationTreeViewItem(EddTreeViewItem parent, int index, IEmrEddViewModel viewModel)
             : base(parent.ProjectFile, parent.ChunkIndex)
         {
+            _viewModel = viewModel;
+
             Parent = parent;
             Index = index;
 
@@ -1505,12 +1513,29 @@ namespace emdui
     public class RdtTreeViewItem : ProjectTreeViewItem
     {
         public override string Header => ProjectFile.Filename;
-        public IRdt Rdt { get; }
+        public IRdt Rdt => (IRdt)ProjectFile.Content;
 
         public RdtTreeViewItem(ProjectFile projectFile)
             : base(projectFile)
         {
-            Rdt = (IRdt)projectFile.Content;
+            CreateChildren();
+        }
+
+        private void CreateChildren()
+        {
+            Items.Clear();
+            Items.Add(new RbjTreeViewItem(ProjectFile));
+        }
+    }
+
+    public class RbjTreeViewItem : ProjectTreeViewItem
+    {
+        public override string Header => "RBJ";
+        public IRdt Rdt => (IRdt)ProjectFile.Content;
+
+        public RbjTreeViewItem(ProjectFile projectFile)
+            : base(projectFile)
+        {
             CreateChildren();
         }
 
@@ -1520,11 +1545,74 @@ namespace emdui
             Items.Clear();
             for (var i = 0; i < rbj.Count; i++)
             {
-                var edd = rbj[i].Edd;
-                var emr = rbj[i].Emr;
-                Items.Add(new EddTreeViewItem(ProjectFile, i));
-                Items.Add(new EmrTreeViewItem(ProjectFile, i, emr, false));
+                var viewModel = new RdtEmrEddViewModel(Rdt, i);
+                Items.Add(new EddTreeViewItem(ProjectFile, i, viewModel));
+                Items.Add(new EmrTreeViewItem(ProjectFile, i, viewModel.Emr, false));
             }
+        }
+    }
+
+    public interface IEmrEddViewModel
+    {
+        IEdd Edd { get; set; }
+        Emr Emr { get; set; }
+    }
+
+    public class ModelEmrEddViewModel : IEmrEddViewModel
+    {
+        private readonly ModelFile _modelFile;
+        private readonly int _chunkIndexEdd;
+        private readonly int _chunkIndexEmr;
+
+        public ModelEmrEddViewModel(ModelFile model, int chunkIndexEdd, int chunkIndexEmr)
+        {
+            _modelFile = model;
+            _chunkIndexEdd = chunkIndexEdd;
+            _chunkIndexEmr = chunkIndexEmr;
+        }
+
+        public IEdd Edd
+        {
+            get => _modelFile.GetChunk<IEdd>(_chunkIndexEdd);
+            set => _modelFile.SetChunk<IEdd>(_chunkIndexEdd, value);
+        }
+
+        public Emr Emr
+        {
+            get => _modelFile.GetChunk<Emr>(_chunkIndexEmr);
+            set => _modelFile.SetChunk<Emr>(_chunkIndexEmr, value);
+        }
+    }
+
+    public class RdtEmrEddViewModel : IEmrEddViewModel
+    {
+        private readonly IRdt _rdt;
+        private readonly int _index;
+
+        public RdtEmrEddViewModel(IRdt rdt, int index)
+        {
+            _rdt = rdt;
+            _index = index;
+        }
+
+        public IEdd Edd
+        {
+            get
+            {
+                var rbj = ((Rdt2)_rdt).RBJ;
+                return rbj[_index].Edd;
+            }
+            set => throw new NotSupportedException();
+        }
+
+        public Emr Emr
+        {
+            get
+            {
+                var rbj = ((Rdt2)_rdt).RBJ;
+                return rbj[_index].Emr;
+            }
+            set => throw new NotSupportedException();
         }
     }
 }

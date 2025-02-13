@@ -119,18 +119,19 @@ namespace emdui
 
             projectTreeView.Project = _project;
 
-            var model = _project.MainModel;
-            IModelMesh mesh = null;
-            for (var i = 0; i < model.NumChunks; i++)
+            if (_project.MainModel is ModelFile model)
             {
-                if (model.GetChunkKind(i) == ModelFile.ChunkKind.Mesh)
+                for (var i = 0; i < model.NumChunks; i++)
                 {
-                    mesh = model.GetChunk<IModelMesh>(i);
+                    if (model.GetChunkKind(i) == ModelFile.ChunkKind.Mesh)
+                    {
+                        var mesh = model.GetChunk<IModelMesh>(i);
+                        if (mesh != null)
+                        {
+                            LoadMesh(mesh);
+                        }
+                    }
                 }
-            }
-            if (mesh != null)
-            {
-                LoadMesh(mesh);
             }
         }
 
@@ -467,6 +468,12 @@ namespace emdui
             {
                 LoadProject(openFileDialog.FileName);
             }
+        }
+
+        private void OpenRdtCommandBinding_CanExecute(object sender, System.Windows.Input.CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = _project != null;
+            e.Handled = true;
         }
 
         private void OpenRdtCommandBinding_Executed(object sender, System.Windows.Input.ExecutedRoutedEventArgs e)
