@@ -44,7 +44,7 @@ scene = context.scene
 for c in scene.collection.children:
     scene.collection.children.unlink(c)
 
-bpy.ops.import_scene.obj(axis_up='-Y', filepath=""{EscapePath(ImportedObjectPath)}"")
+bpy.ops.wm.obj_import(up_axis='NEGATIVE_Y', filepath=""{EscapePath(ImportedObjectPath)}"")
 bpy.ops.wm.save_as_mainfile(filepath=""{EscapePath(BlendPath)}"")
 ";
             File.WriteAllText(importScriptPath, importScript);
@@ -53,7 +53,7 @@ bpy.ops.wm.save_as_mainfile(filepath=""{EscapePath(BlendPath)}"")
 import bpy
 
 bpy.context.preferences.view.show_splash = False
-bpy.ops.export_scene.obj(axis_up='-Y', filepath=""{EscapePath(ExportedObjectPath)}"")
+bpy.ops.wm.obj_export(up_axis='NEGATIVE_Y', filepath=""{EscapePath(ExportedObjectPath)}"")
 bpy.ops.wm.quit_blender()
 ";
             File.WriteAllText(exportScriptPath, exportScript);
@@ -118,7 +118,7 @@ bpy.ops.wm.quit_blender()
 
             var blenderPath = Directory
                 .GetDirectories(blenderRoot)
-                .OrderBy(x => x)
+                .OrderByDescending(x => x)
                 .FirstOrDefault();
             if (blenderPath == null)
                 return null;
