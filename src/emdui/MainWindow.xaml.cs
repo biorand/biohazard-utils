@@ -360,7 +360,15 @@ namespace emdui
         {
             _mesh = mesh;
             _tim = texture ?? _project.MainTexture;
-            _baseEmr = _project.MainModel.GetEmr(0);
+
+            var baseEmrNumber = 0;
+            if (_project.MainModel.Version == BioVersion.Biohazard1 &&
+                _project.MainModel.NumChunks == 6)
+            {
+                baseEmrNumber = 1;
+            }
+            _baseEmr = _project.MainModel.GetEmr(baseEmrNumber);
+
             _emr = _baseEmr;
             _edd = null;
             _isolatedPartIndex = -1;
