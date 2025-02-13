@@ -238,8 +238,8 @@ namespace emdui
                     case MorphData morph:
                         tvi = new MorphTreeViewItem(projectFile, i, morph);
                         break;
-                    case IEdd edd:
-                        tvi = new EddTreeViewItem(projectFile, i, edd);
+                    case IEdd _:
+                        tvi = new EddTreeViewItem(projectFile, i);
                         break;
                     case Emr emr:
                         tvi = new EmrTreeViewItem(projectFile, i, emr, isFirstEmr);
@@ -323,15 +323,13 @@ namespace emdui
         public override string Header => "EDD";
         public IEdd Edd
         {
-            get => Model.GetEdd(ChunkIndex);
-            set => Model.SetEdd(ChunkIndex, value);
+            get => Model.GetChunk<IEdd>(ChunkIndex);
+            set => Model.SetChunk<IEdd>(ChunkIndex, value);
         }
 
-        public EddTreeViewItem(ProjectFile projectFile, int chunkIndex, IEdd edd)
+        public EddTreeViewItem(ProjectFile projectFile, int chunkIndex)
             : base(projectFile, chunkIndex)
         {
-            Edd = edd;
-
             CreateChildren();
 
             AddMenuItem("Import...", Import);
@@ -1524,7 +1522,7 @@ namespace emdui
             {
                 var edd = rbj[i].Edd;
                 var emr = rbj[i].Emr;
-                Items.Add(new EddTreeViewItem(ProjectFile, i, edd));
+                Items.Add(new EddTreeViewItem(ProjectFile, i));
                 Items.Add(new EmrTreeViewItem(ProjectFile, i, emr, false));
             }
         }

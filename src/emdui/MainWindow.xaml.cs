@@ -107,7 +107,16 @@ namespace emdui
 
         private void LoadProject(string path)
         {
-            _project = Project.FromFile(path);
+            try
+            {
+                _project = Project.FromFile(path);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Invalid or corrupt file.", "Failed to open file.", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             projectTreeView.Project = _project;
 
             var model = _project.MainModel;
