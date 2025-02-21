@@ -29,7 +29,7 @@ jobs:
         cd out
         7z -r a ${{ github.workspace }}/biohazard-utils.zip *.exe *.dll *.config README.md CHANGELOG.md LICENSE
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: biohazard-utils
         path: out/**/*
