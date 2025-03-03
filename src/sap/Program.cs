@@ -148,7 +148,7 @@ namespace IntelOrca.Scd
         {
             Console.WriteLine("Resident Evil SAP packer / extractor");
             Console.WriteLine("usage: sap -x <sap> [-o directory]");
-            Console.WriteLine("       scd -o <sap> <wav> [<wav> ...]");
+            Console.WriteLine("       sap -o <sap> <wav> [<wav> ...]");
             return 1;
         }
     }
