@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Product>Resident Evil RDT Packer / Unpacker</Product>
+    <Version>1.0.0</Version>
+    <RootNamespace>IntelOrca.Biohazard.RdtPacker</RootNamespace>
+    <ApplicationIcon>biorand.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>12</LangVersion>
+    <IsTool>true</IsTool>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="biorand.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\IntelOrca.Biohazard\IntelOrca.Biohazard.csproj" />
+  </ItemGroup>
+  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation">
+    <Exec Command="git describe --long --always --exclude=* --abbrev=7"
+      ConsoleToMSBuild="True"
+      IgnoreExitCode="False">
+      <Output PropertyName="SourceRevisionId" TaskParameter="ConsoleOutput" />
+    </Exec>
+  </Target>
+</Project>

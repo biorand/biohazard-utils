@@ -38,6 +38,9 @@ namespace IntelOrca.Biohazard
 
         public static void Write(this BinaryWriter bw, byte value, int count)
         {
+            if (count == 0)
+                return;
+
             var buffer = new byte[Math.Min(4096, count)];
             Unsafe.InitBlock(ref buffer[0], value, (uint)buffer.Length);
             for (var i = 0; i < count; i += buffer.Length)
