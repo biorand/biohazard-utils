@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace IntelOrca.Biohazard.Room
@@ -64,6 +65,7 @@ namespace IntelOrca.Biohazard.Room
     /// <summary>
     /// Used for RDT builders so that they can refer to models and textures by index.
     /// </summary>
+    [DebuggerDisplay("Model = {Model} Texture = {Texture}")]
     public readonly struct ModelTextureIndex
     {
         public int Model { get; }

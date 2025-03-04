@@ -75,10 +75,16 @@ namespace IntelOrca.Biohazard.Rdt
             {
                 var modelIndex = table[i].Model;
                 var textureIndex = table[i].Texture;
-                var md1 = rdt.EmbeddedObjectMd1[textureIndex];
-                var tim = rdt.EmbeddedObjectTim[textureIndex];
-                WriteFile($"Object/object{i:00}.md1", md1.Data);
-                WriteFile($"Object/object{i:00}.tim", tim.Data);
+                if (modelIndex != -1)
+                {
+                    var md1 = rdt.EmbeddedObjectMd1[modelIndex];
+                    WriteFile($"Object/object{i:00}.md1", md1.Data);
+                }
+                if (textureIndex != -1)
+                {
+                    var tim = rdt.EmbeddedObjectTim[textureIndex];
+                    WriteFile($"Object/object{i:00}.tim", tim.Data);
+                }
             }
         }
 

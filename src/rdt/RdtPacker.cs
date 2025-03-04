@@ -91,6 +91,7 @@ namespace IntelOrca.Biohazard.Rdt
 
         private void ReadObjects(Rdt2.Builder rdt2b)
         {
+            var md1Hash = new List<ulong>();
             var timHash = new List<ulong>();
             for (var i = 0; i < 100; i++)
             {
@@ -99,12 +100,18 @@ namespace IntelOrca.Biohazard.Rdt
                 if (md1Data.Length == 0 && timData.Length == 0)
                     break;
 
-                var md1Index = 0;
-                var timIndex = 0;
+                var md1Index = -1;
+                var timIndex = -1;
                 if (md1Data.Length != 0)
                 {
-                    rdt2b.EmbeddedObjectMd1.Add(new Md1(md1Data));
-                    md1Index = rdt2b.EmbeddedObjectMd1.Count - 1;
+                    var hash = md1Data.CalculateFnv1a();
+                    md1Index = md1Hash.FindIndex(x => x == hash);
+                    if (md1Index == -1)
+                    {
+                        rdt2b.EmbeddedObjectMd1.Add(new Md1(md1Data));
+                        md1Hash.Add(md1Data.CalculateFnv1a());
+                        md1Index = rdt2b.EmbeddedObjectMd1.Count - 1;
+                    }
                 }
                 if (timData.Length != 0)
                 {
