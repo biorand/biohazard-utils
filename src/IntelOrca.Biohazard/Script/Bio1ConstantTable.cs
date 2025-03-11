@@ -136,10 +136,12 @@ namespace IntelOrca.Biohazard.Script
                     Re1EventOpcode.Block => 2,
                     Re1EventOpcode.Single => 2,
                     Re1EventOpcode.Unk08 => 2,
+                    Re1EventOpcode.Disable => 2,
 
-                    (Re1EventOpcode)0x81 => 10,
+                    (Re1EventOpcode)0x81 => 2,
                     (Re1EventOpcode)0x83 => 8,
                     (Re1EventOpcode)0x84 => 4,
+                    (Re1EventOpcode)0x85 => 4,
                     (Re1EventOpcode)0x87 => 4,
 
                     Re1EventOpcode.Sleep => 4,

@@ -15,6 +15,8 @@
         Disable,
 
         // Mutations
+        Unk81 = 0x81,
+        Unk85 = 0x85,
         Unk86 = 0x86,
 
         // Control
