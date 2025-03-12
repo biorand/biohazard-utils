@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using IntelOrca.Biohazard.Room;
 
 namespace IntelOrca.Biohazard.Script.Compilation
 {
@@ -324,42 +325,41 @@ namespace IntelOrca.Biohazard.Script.Compilation
             if (_currScriptKind == null)
                 return;
 
-            if (_version == BioVersion.Biohazard1)
-            {
-                FixLabelReferences();
-            }
             if (Errors.ErrorCount == 0)
             {
                 if (_version == BioVersion.Biohazard1)
                 {
+                    EndProcedure();
                     if (_currScriptKind != BioScriptKind.Event)
                     {
-                        var procLength = _procData.Count;
+                        var procData = _procedures[0].ToList();
+                        var procLength = procData.Count;
                         if (procLength <= 2)
                         {
                             // Empty script
                             procLength = 0;
                         }
 
-                        _procData[0] = (byte)(procLength & 0xFF);
-                        _procData[1] = (byte)(procLength >> 8);
-                        _procData.Add(0);
-                        while ((_procData.Count & 3) != 0)
+                        procData[0] = (byte)(procLength & 0xFF);
+                        procData[1] = (byte)(procLength >> 8);
+                        procData.Add(0);
+                        while ((procData.Count & 3) != 0)
                         {
-                            _procData.Add(0);
+                            procData.Add(0);
                         }
 
-                        var output = _procData.ToArray();
-                        _editOperations.Add(new ScdRdtEditOperation(_currScriptKind.Value, new Room.ScdProcedureList(_version!.Value, output)));
+                        var output = procData.ToArray();
+                        var container = new ScdProcedureContainer(output);
+                        _editOperations.Add(new ScdRdtEditOperation(_currScriptKind.Value, container));
                     }
                     else
                     {
-                        EndProcedure();
-                        foreach (var proc in _procedures)
+                        var b = new Room.ScdEventList.Builder();
+                        foreach (var p in _procedures)
                         {
-                            var output = proc.ToArray();
-                            _editOperations.Add(new ScdRdtEditOperation(_currScriptKind.Value, new Room.ScdProcedureList(_version!.Value, output)));
+                            b.Events.Add(new ScdEvent(p));
                         }
+                        _editOperations.Add(new ScdRdtEditOperation(_currScriptKind.Value, b.ToEventList()));
                     }
                 }
                 else

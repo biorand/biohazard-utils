@@ -13,7 +13,21 @@ namespace IntelOrca.Biohazard.Script.Compilation
     public class ScdRdtEditOperation : IRdtEditOperation
     {
         public BioScriptKind Kind { get; }
+        public ScdProcedureContainer Container { get; }
+        public ScdEventList Events { get; }
         public ScdProcedureList Data { get; }
+
+        public ScdRdtEditOperation(BioScriptKind kind, ScdProcedureContainer container)
+        {
+            Kind = kind;
+            Container = container;
+        }
+
+        public ScdRdtEditOperation(BioScriptKind kind, ScdEventList events)
+        {
+            Kind = kind;
+            Events = events;
+        }
 
         public ScdRdtEditOperation(BioScriptKind kind, ScdProcedureList data)
         {
@@ -23,7 +37,26 @@ namespace IntelOrca.Biohazard.Script.Compilation
 
         public void Perform(IRdtBuilder target)
         {
-            if (target is Rdt2.Builder builder2)
+            if (target is Rdt1.Builder builder1)
+            {
+                if (Kind == BioScriptKind.Init)
+                {
+                    builder1.InitSCD = Container;
+                }
+                else if (Kind == BioScriptKind.Main)
+                {
+                    builder1.MainSCD = Container;
+                }
+                else if (Kind == BioScriptKind.Event)
+                {
+                    builder1.EventSCD = Events;
+                }
+                else
+                {
+                    throw new NotSupportedException();
+                }
+            }
+            else if (target is Rdt2.Builder builder2)
             {
                 if (Kind == BioScriptKind.Init)
                 {

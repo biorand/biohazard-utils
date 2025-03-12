@@ -126,7 +126,6 @@ namespace IntelOrca.Biohazard.Script
                             break;
                         }
                         case Re1EventOpcode.Single:
-                        case Re1EventOpcode.Do:
                         {
                             var opcodeLen = br.ReadByte();
                             br.BaseStream.Position -= 2;
@@ -156,6 +155,24 @@ namespace IntelOrca.Biohazard.Script
                             }
                             br.BaseStream.Position -= 2;
                             visitor.VisitBeginEventOpcode((int)(BaseOffset + br.BaseStream.Position), br.ReadBytes(len));
+                            visitor.VisitEndEventOpcode();
+                            break;
+                        }
+                        case Re1EventOpcode.Do:
+                        {
+                            var opcodeLen = br.ReadByte();
+                            br.BaseStream.Position -= 2;
+
+                            visitor.VisitBeginEventOpcode((int)(BaseOffset + br.BaseStream.Position), br.ReadBytes(2));
+                            if (opcodeLen >= 2)
+                            {
+                                var baseOffset = (int)(BaseOffset + br.BaseStream.Position);
+                                var opcodes = br.ReadBytes(opcodeLen - 2);
+                                var opcodeStream = new SpanStream(opcodes);
+                                while (ReadRe1Opcode(opcodeStream, constantTable, visitor, baseOffset))
+                                {
+                                }
+                            }
                             visitor.VisitEndEventOpcode();
                             break;
                         }

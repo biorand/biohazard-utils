@@ -21,9 +21,9 @@ namespace IntelOrca.Biohazard.Tests
         }
 
         [Fact]
-        public void RE1_104()
+        public void RE1_100()
         {
-            var rdtFileName = "ROOM1040.RDT";
+            var rdtFileName = "ROOM1000.RDT";
             var rdtFile = GetRdt(BioVersion.Biohazard1, rdtFileName);
             var sPath = Path.ChangeExtension(rdtFileName, ".s");
             var fail = AssertReassembleRdt(rdtFile, sPath);
@@ -107,49 +107,46 @@ namespace IntelOrca.Biohazard.Tests
             }
             else
             {
-                var scdInit = GetScdMemory(rdtFile, BioScriptKind.Init);
-                var scdDataInit = scdAssembler.Operations
-                    .OfType<ScdRdtEditOperation>()
-                    .FirstOrDefault(x => x.Kind == BioScriptKind.Init)
-                    .Data;
-                var index = CompareByteArray(scdInit, scdDataInit.Data);
-                if (index != -1)
+                if (rdtFile.Version == BioVersion.Biohazard1)
                 {
-                    _output.WriteLine(".init differs at 0x{0:X2} for '{1}'", index, sPath);
-                    fail = true;
-                }
+                    var scdInit = GetScdMemory(rdtFile, BioScriptKind.Init);
+                    var scdDataInit = scdAssembler.Operations
+                        .OfType<ScdRdtEditOperation>()
+                        .FirstOrDefault(x => x.Kind == BioScriptKind.Init)
+                        .Container;
+                    var index = CompareByteArray(scdInit, scdDataInit.Data);
+                    if (index != -1)
+                    {
+                        _output.WriteLine(".init differs at 0x{0:X2} for '{1}'", index, sPath);
+                        fail = true;
+                    }
 
-                if (rdtFile.Version != BioVersion.Biohazard3)
-                {
                     var scdMain = GetScdMemory(rdtFile, BioScriptKind.Main);
                     var scdDataMain = scdAssembler.Operations
                         .OfType<ScdRdtEditOperation>()
                         .FirstOrDefault(x => x.Kind == BioScriptKind.Main)
-                        .Data;
+                        .Container;
                     index = CompareByteArray(scdMain, scdDataMain.Data);
                     if (index != -1)
                     {
                         _output.WriteLine(".main differs at 0x{0:X2} for '{1}'", index, sPath);
                         fail = true;
                     }
-                }
 
-                if (rdtFile.Version == BioVersion.Biohazard1)
-                {
-                    var scdDataEvents = scdAssembler.Operations
+                    var scdEventsNew = scdAssembler.Operations
                         .OfType<ScdRdtEditOperation>()
-                        .Where(x => x.Kind == BioScriptKind.Event)
-                        .ToArray();
+                        .FirstOrDefault(x => x.Kind == BioScriptKind.Event)
+                        ?.Events;
 
                     var rdt1 = rdtFile as Rdt1;
-                    var eventListScd = rdt1.EventSCD;
-                    if (eventListScd.Count == scdDataEvents.Length)
+                    var sceEventsOriginal = rdt1.EventSCD;
+                    if (sceEventsOriginal.Count == (scdEventsNew?.Count ?? 0))
                     {
-                        for (var i = 0; i < eventListScd.Count; i++)
+                        for (var i = 0; i < sceEventsOriginal.Count; i++)
                         {
-                            var scdEvent = eventListScd[i];
-                            var scdDataMain = scdDataEvents[i].Data;
-                            index = CompareByteArray(scdEvent.Data, scdDataMain.Data);
+                            var scdEventOriginal = sceEventsOriginal[i];
+                            var scdEventNew = scdEventsNew.Value[i];
+                            index = CompareByteArray(scdEventOriginal.Data, scdEventNew.Data);
                             if (index != -1)
                             {
                                 _output.WriteLine(".event event_{2:X2} differs at 0x{0:X2} for '{1}'", index, sPath, i);
@@ -161,6 +158,35 @@ namespace IntelOrca.Biohazard.Tests
                     {
                         _output.WriteLine("Incorrect number of events for '{0}'", sPath);
                         fail = true;
+                    }
+                }
+                else
+                {
+                    var scdInit = GetScdMemory(rdtFile, BioScriptKind.Init);
+                    var scdDataInit = scdAssembler.Operations
+                        .OfType<ScdRdtEditOperation>()
+                        .FirstOrDefault(x => x.Kind == BioScriptKind.Init)
+                        .Data;
+                    var index = CompareByteArray(scdInit, scdDataInit.Data);
+                    if (index != -1)
+                    {
+                        _output.WriteLine(".init differs at 0x{0:X2} for '{1}'", index, sPath);
+                        fail = true;
+                    }
+
+                    if (rdtFile.Version != BioVersion.Biohazard3)
+                    {
+                        var scdMain = GetScdMemory(rdtFile, BioScriptKind.Main);
+                        var scdDataMain = scdAssembler.Operations
+                            .OfType<ScdRdtEditOperation>()
+                            .FirstOrDefault(x => x.Kind == BioScriptKind.Main)
+                            .Data;
+                        index = CompareByteArray(scdMain, scdDataMain.Data);
+                        if (index != -1)
+                        {
+                            _output.WriteLine(".main differs at 0x{0:X2} for '{1}'", index, sPath);
+                            fail = true;
+                        }
                     }
                 }
             }
