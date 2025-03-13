@@ -391,7 +391,7 @@ namespace IntelOrca.Biohazard.Script
             "effect",
             "",
             "remove_item:t",
-            "",
+            "give_item:uuu",
             "",
             "",
             "",
