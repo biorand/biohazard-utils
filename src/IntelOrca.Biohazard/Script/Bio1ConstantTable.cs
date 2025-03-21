@@ -10,6 +10,7 @@ namespace IntelOrca.Biohazard.Script
         private const byte SCE_ITEMBOX = 8;
         private const byte SCE_EVENT = 9;
         private const byte SCE_SAVE = 10;
+        private const byte SCE_HIKIDASHI = 14;
 
         private static readonly SortedDictionary<string, int> _constantMap = new SortedDictionary<string, int>();
 
@@ -710,7 +711,11 @@ namespace IntelOrca.Biohazard.Script
             "SCE_7",
             "SCE_ITEMBOX",
             "SCE_EVENT",
-            "SCE_SAVE"
+            "SCE_SAVE",
+            "SCE_11",
+            "SCE_12",
+            "SCE_13",
+            "SCE_HIKIDASHI",
         };
 
         private static readonly string[] g_wkNames = new string[] {
