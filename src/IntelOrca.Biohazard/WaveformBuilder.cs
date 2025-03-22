@@ -91,7 +91,21 @@ namespace IntelOrca.Biohazard
             return ms.ToArray();
         }
 
+        public byte[] ToArray(ulong? sapHeader = null)
+        {
+            using var ms = new MemoryStream();
+            Save(ms, sapHeader);
+            return ms.ToArray();
+        }
+
         public void Save(string path, ulong sapHeader = 1)
+        {
+            using var fs = new FileStream(path, FileMode.Create);
+            var sapHeaderReal = path.EndsWith(".sap", StringComparison.OrdinalIgnoreCase) ? sapHeader : (ulong?)null;
+            Save(fs, sapHeaderReal);
+        }
+
+        public void Save(Stream stream, ulong? sapHeader = 1)
         {
             if (!_headerWritten)
                 throw new InvalidOperationException();
@@ -99,17 +113,14 @@ namespace IntelOrca.Biohazard
             if (!_finished)
                 Finish();
 
-            using (var fs = new FileStream(path, FileMode.Create))
+            if (sapHeader is ulong h)
             {
-                if (path.EndsWith(".sap", StringComparison.OrdinalIgnoreCase))
-                {
-                    var bw = new BinaryWriter(fs);
-                    bw.Write(sapHeader);
-                }
-                _stream.Position = 0;
-                _stream.CopyTo(fs);
-                _stream.Position = _stream.Length;
+                var bw = new BinaryWriter(stream);
+                bw.Write(h);
             }
+            _stream.Position = 0;
+            _stream.CopyTo(stream);
+            _stream.Position = _stream.Length;
         }
 
         public void SaveAppend(string path)
