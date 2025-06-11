@@ -185,20 +185,19 @@ namespace IntelOrca.Biohazard
             }
         }
 
-        public void Append(string path)
+        public WaveformBuilder Append(string path)
         {
-            Append(path, 0, double.NaN);
+            return Append(path, 0, double.NaN);
         }
 
-        public void Append(string path, double start, double end)
+        public WaveformBuilder Append(string path, double start, double end)
         {
-            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
-            {
-                Append(path, fs, start, end);
-            }
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+            Append(path, fs, start, end);
+            return this;
         }
 
-        public void Append(string path, int sapIndex, double start, double end)
+        public WaveformBuilder Append(string path, int sapIndex, double start, double end)
         {
             var sapFile = new SapFile(path);
             var wavFile = sapFile.WavFiles[sapIndex];
@@ -208,6 +207,7 @@ namespace IntelOrca.Biohazard
             decoder.Convert(sapStream, wavStream);
             wavStream.Position = 0;
             AppendWav(wavStream, start, end);
+            return this;
         }
 
         public void Append(string path, Stream input) => Append(path, input, 0, double.NaN);
