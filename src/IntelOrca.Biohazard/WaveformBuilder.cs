@@ -21,6 +21,7 @@ namespace IntelOrca.Biohazard
         public int Channels { get; private set; }
         public int SampleRate { get; private set; }
         public float Volume { get; private set; } = 1;
+        public double Duration => (double)_stream.Length / _header.nAvgBytesPerSec;
 
         public static bool IsSupportedExtension(string path)
         {
