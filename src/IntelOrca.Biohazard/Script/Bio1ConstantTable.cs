@@ -6,11 +6,14 @@ namespace IntelOrca.Biohazard.Script
 {
     public class Bio1ConstantTable : IConstantTable
     {
+        private const byte SCE_DOOR = 1;
         private const byte SCE_MESSAGE = 2;
         private const byte SCE_ITEMBOX = 8;
         private const byte SCE_EVENT = 9;
         private const byte SCE_SAVE = 10;
+        private const byte SCE_DOCUMENT = 13;
         private const byte SCE_HIKIDASHI = 14;
+        private const byte SCE_TYPEWRITER = 16;
 
         private static readonly SortedDictionary<string, int> _constantMap = new SortedDictionary<string, int>();
 
@@ -358,7 +361,7 @@ namespace IntelOrca.Biohazard.Script
             "setb:uuu",
             "cutnext:u",
             "cutcurr:u",
-            "",
+            "message",
             "door_aot_set:uIIIIuuuuurIIIItu",
             "aot_set:uIIIIsuuuuuuu",
             "nop:u",
@@ -366,7 +369,7 @@ namespace IntelOrca.Biohazard.Script
             "testitem:t",
             "testpickup:t",
             "aot_reset:usuIII",
-            "aot_delete",
+            "aot_delete:usu",
             "evt_exec:uup",
             "bgm_play:u",
             "bgm_stop:u",
@@ -383,7 +386,7 @@ namespace IntelOrca.Biohazard.Script
             "pos_set:uIIIIII",
             "",
             "cut_auto",
-            "aot_on",
+            "aot_on:usu",
             "",
             "",
             "",
@@ -702,20 +705,22 @@ namespace IntelOrca.Biohazard.Script
 
         private static readonly string[] g_sceNames = new string[] {
             "SCE_0",
-            "SCE_1",
+            "SCE_DOOR",
             "SCE_MESSAGE",
             "SCE_3",
-            "SCE_4",
+            "SCE_ITEM",
             "SCE_5",
             "SCE_6",
             "SCE_7",
             "SCE_ITEMBOX",
             "SCE_EVENT",
             "SCE_SAVE",
-            "SCE_11",
-            "SCE_12",
-            "SCE_13",
+            "SCE_B",
+            "SCE_C",
+            "SCE_DOCUMENT",
             "SCE_HIKIDASHI",
+            "SCE_F",
+            "SCE_TYPEWRITER",
         };
 
         private static readonly string[] g_wkNames = new string[] {
