@@ -1,0 +1,149 @@
+{
+  "process": {
+    "name": "^Bio$"
+  },
+  "positionRecorder": {
+    "key": "0x500",
+    "distance": 500
+  },
+  "variables": [
+    {
+      "name": "input",
+      "type": "s16",
+      "display": "hex",
+      "offset": "0x00C38710"
+    },
+    {
+      "name": "player.x",
+      "type": "s16",
+      "offset": "0x00C351E8"
+    },
+    {
+      "name": "player.y",
+      "type": "s16",
+      "offset": "0x00C351EC"
+    },
+    {
+      "name": "player.z",
+      "type": "s16",
+      "offset": "0x00C351F0"
+    },
+    {
+      "name": "player.d",
+      "type": "s16",
+      "offset": "0x00C35228"
+    },
+    {
+      "name": "stage",
+      "type": "u8",
+      "offset": "0x00C386F0"
+    },
+    {
+      "name": "room",
+      "type": "u8",
+      "offset": "0x00C386F1"
+    },
+    {
+      "name": "cut",
+      "type": "u8",
+      "offset": "0x00C386F2"
+    },
+    {
+      "name": "inventory.count",
+      "type": "u8",
+      "offset": "0x00C386F7"
+    },
+    {
+      "name": "inventory.items",
+      "type": "re1.inventory[]",
+      "offset": "0x00C38814"
+    }
+  ],
+  "flagGroups": [
+    {
+      "id": 0,
+      "name": "scenario",
+      "offset": "0x00C38790",
+      "count": 128
+    },
+    {
+      "id": 1,
+      "name": "common",
+      "offset": "0x00C38724",
+      "count": 256
+    },
+    {
+      "id": 2,
+      "name": "locks",
+      "offset": "0x00C38744",
+      "count": 64
+    },
+    {
+      "id": 3,
+      "name": "enemies",
+      "offset": "0x00C3874C",
+      "count": 256
+    },
+    {
+      "id": 4,
+      "name": "room",
+      "offset": "0x00C33098",
+      "count": 32
+    },
+    {
+      "id": 5,
+      "name": "status",
+      "offset": "0x00C33090",
+      "count": 32
+    },
+    {
+      "name": "system",
+      "offset": "0x00C33094",
+      "count": 32
+    },
+    {
+      "id": 7,
+      "name": "item",
+      "offset": "0x00C3876C",
+      "count": 256
+    },
+    {
+      "id": 8,
+      "name": "map",
+      "offset": "0x00C387A0",
+      "count": 160
+    },
+    {
+      "name": "object",
+      "offset": "0x00C3878C",
+      "count": 32
+    }
+  ],
+  "flagNames": {
+    "0:101": "512 Partner cutscene",
+    "0:123": "Ink ribbons",
+    "0:124": "Lockpick",
+    "0:127": "Pick up radio",
+    "0:192": "Rebecca not saved",
+    "1:0": "106 first cutscene",
+    "1:2": "104 first zombie found",
+    "1:3": "106 return cutscene",
+    "1:5": "106 search complete",
+    "1:7": "106 Barry gift",
+    "1:36": "100 first Rebecca cutscene",
+    "1:69": "501 Brad call cutscene",
+    "1:72": "30A Enrico cutscene",
+    "1:86": "20E Yawn poison partner recovery",
+    "1:97": "20D Richard recieives serum",
+    "1:100": "40C Rebecca V-JOLT",
+    "1:103": "212 Forrest cutscene",
+    "1:161": "105 first cutscene",
+    "1:167": "105 emblem state (Chris)",
+    "1:170": "105 emblem state (Jill)",
+    "1:171": "405 Wesker cutscene (Chris)",
+    "1:172": "104 visited",
+    "1:173": "105 zombie cutscene",
+    "1:175": "405 Wesker cutscene (Jill)",
+    "1:192": "Barry not saved"
+  }
+}

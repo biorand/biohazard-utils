@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
+using System.Xml;
+using survey;
 
 namespace IntelOrca.Biohazard.Survey
 {
@@ -56,6 +61,198 @@ namespace IntelOrca.Biohazard.Survey
         }
 
         public static void Main(string[] args)
+        {
+            var manifests = GetManifests();
+            GameState2? gameState = null;
+
+            var lastGameCheck = DateTime.MinValue;
+            var gameCheckInterval = TimeSpan.FromSeconds(2.5);
+
+            Console.CancelKeyPress += Console_CancelKeyPress;
+            Console.WriteLine("Looking for game...");
+            do
+            {
+                var now = DateTime.UtcNow;
+                if (now >= lastGameCheck + gameCheckInterval)
+                {
+                    lastGameCheck = now;
+                    gameState = GetGameState(manifests);
+                }
+                else
+                {
+                    Thread.Sleep(100);
+                }
+            }
+
+            while (gameState == null || _exit);
+            if (_exit)
+                return;
+
+            Console.WriteLine("Game found");
+            while (!_exit && !gameState.Process.HasExited)
+            {
+                if (gameState.Refresh())
+                {
+                    WriteXml(gameState);
+                }
+                Thread.Sleep(500);
+                ReadXml(gameState);
+            }
+        }
+
+        private static ImmutableArray<GameStateManifest> GetManifests()
+        {
+            var result = new List<GameStateManifest>();
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceNames = assembly.GetManifestResourceNames();
+            foreach (var resourceName in resourceNames)
+            {
+                if (resourceName.EndsWith(".json"))
+                {
+                    using var stream = assembly.GetManifestResourceStream(resourceName);
+                    if (stream != null)
+                    {
+                        var reader = new StreamReader(stream);
+                        var json = reader.ReadToEnd();
+                        result.Add(GameStateManifest.FromJson(json));
+                    }
+                }
+            }
+            return [.. result];
+        }
+
+        private static GameState2? GetGameState(ImmutableArray<GameStateManifest> manifests)
+        {
+            var pAll = Process.GetProcesses();
+            foreach (var process in pAll)
+            {
+                var processName = process.ProcessName;
+                foreach (var manifest in manifests)
+                {
+                    var pattern = new Regex(manifest.Process.Name);
+                    if (pattern.IsMatch(processName))
+                    {
+                        return new GameState2(manifest, process);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static void WriteXml(GameState2 state)
+        {
+            var dir = new DirectoryInfo("state");
+            if (!dir.Exists)
+                dir.Create();
+
+            var targetPath = Path.Combine(dir.FullName, "state.xml");
+            using (var writer = XmlWriter.Create(targetPath, new XmlWriterSettings { Indent = true }))
+            {
+                writer.WriteStartDocument();
+                writer.WriteStartElement("state");
+
+                writer.WriteStartElement("variables");
+                foreach (var variable in state.Manifest.Variables)
+                {
+                    writer.WriteStartElement("variable");
+                    writer.WriteAttributeString("name", variable.Name);
+
+                    var value = state.GetValue(variable.Name);
+                    if (value != null)
+                    {
+                        writer.WriteValue(value.ToString() ?? string.Empty);
+                    }
+
+                    writer.WriteEndElement();
+                }
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("flags");
+                foreach (var group in state.Manifest.FlagGroups)
+                {
+                    writer.WriteStartElement("group");
+                    writer.WriteAttributeString("id", group.Id.ToString());
+                    writer.WriteAttributeString("name", group.Name);
+                    for (int i = 0; i < group.Count; i++)
+                    {
+                        var flagValue = state.GetValue($"flags.{group.Name}[{i}]");
+                        var flagKey = $"{group.Id}:{i}";
+                        state.Manifest.FlagNames.TryGetValue(flagKey, out var flagName);
+
+                        writer.WriteStartElement("flag");
+                        writer.WriteAttributeString("id", i.ToString());
+                        if (flagName != null)
+                            writer.WriteAttributeString("name", flagName);
+                        writer.WriteValue(flagValue?.ToString() ?? string.Empty);
+                        writer.WriteEndElement();
+                    }
+                    writer.WriteEndElement();
+                }
+                writer.WriteEndElement();
+
+                writer.WriteEndElement();
+                writer.WriteEndDocument();
+            }
+
+            _lastXmlModified = File.GetLastWriteTimeUtc(targetPath);
+        }
+
+        private static DateTime _lastXmlModified = DateTime.MinValue;
+        private static void ReadXml(GameState2 state)
+        {
+            var path = "state/state.xml";
+            var lastModified = File.GetLastWriteTimeUtc(path);
+            if (lastModified <= _lastXmlModified)
+                return;
+
+            _lastXmlModified = lastModified;
+
+            var xml = GetFileContentsRetry(path);
+            var dict = new Dictionary<string, object>();
+            var doc = new XmlDocument();
+            doc.LoadXml(xml);
+            foreach (XmlNode flagGroupNode in doc.SelectNodes("state/flags/group")!)
+            {
+                var groupName = flagGroupNode.Attributes?["name"]?.Value ?? null;
+                if (groupName == null)
+                    continue;
+
+                foreach (XmlNode flagNode in flagGroupNode.SelectNodes("flag")!)
+                {
+                    var flagId = flagNode.Attributes?["id"]?.Value ?? null;
+                    if (flagId == null || !int.TryParse(flagId, out var flagIdInt))
+                        continue;
+
+                    if (!int.TryParse(flagNode.InnerText, out var value))
+                        continue;
+
+                    dict[$"flags.{groupName}[{flagIdInt}]"] = value;
+                }
+            }
+
+            state.Update(dict);
+        }
+
+        private static string GetFileContentsRetry(string path)
+        {
+            for (var i = 0; ; i++)
+            {
+                try
+                {
+                    return File.ReadAllText(path);
+                }
+                catch (Exception)
+                {
+                    if (i >= 5)
+                    {
+                        throw;
+                    }
+                    Thread.Sleep(100);
+                }
+            }
+        }
+
+        public static void MainOld(string[] args)
         {
             LoadJSON();
 
@@ -114,7 +311,7 @@ namespace IntelOrca.Biohazard.Survey
             }
         }
 
-        private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
+        private static void Console_CancelKeyPress(object? sender, ConsoleCancelEventArgs e)
         {
             _exit = true;
         }
