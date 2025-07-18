@@ -83,6 +83,7 @@ namespace IntelOrca.Biohazard.Script
             return kind switch
             {
                 'e' => GetEnemyName((byte)value),
+                'f' => GetConstantName(g_flagGroups, value),
                 't' => GetKeyName((byte)value),
                 's' => GetConstantName(g_sceNames, value),
                 'p' => $"event_{value:X2}",
@@ -354,8 +355,8 @@ namespace IntelOrca.Biohazard.Script
             "if:l",
             "else:l",
             "endif:u",
-            "ck:uuu",
-            "set:uuu",
+            "ck:fuu",
+            "set:fuu",
             "cmpb:uuu",
             "cmpw:uuuI",
             "setb:uuu",
@@ -698,9 +699,24 @@ namespace IntelOrca.Biohazard.Script
             2, 2, 2, 2, 4, 4, 4, 6, 4, 2, 2, 4, 26, 18, 2, 8,
             2, 2, 10, 4, 4, 2, 2, 10, 26, 4, 2, 22, 6, 2, 4, 28,
             14, 14, 4, 2, 4, 4, 0, 2, 4 + 2, 2, 12, 4, 2, 4, 0, 4,
-            12, 4, 4, 4 + 0, 8, 4, 4, 4, 4, 2, 4, 6, 6, 12, 2, 6,
+            12, 4, 4, 2, 8, 4, 4, 4, 4, 2, 4, 6, 6, 12, 2, 6,
             16, 4, 4, 4, 2, 2, 44 + 0, 14, 2, 2, 2, 2, 4, 2, 4, 2,
             2
+        };
+
+
+        private static string?[] g_flagGroups = new[]
+        {
+            "FG_SCENARIO",
+            "FG_COMMON",
+            "FG_LOCK",
+            "FG_ENEMY",
+            "FG_ROOM",
+            "FG_STATUS",
+            "FG_6",
+            "FG_ITEM",
+            "FG_MAP",
+            "FG_9"
         };
 
         private static readonly string[] g_sceNames = new string[] {
