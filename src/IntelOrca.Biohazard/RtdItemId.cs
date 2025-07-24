@@ -2,7 +2,7 @@
 
 namespace IntelOrca.Biohazard
 {
-    public struct RdtItemId : IEquatable<RdtItemId>
+    public struct RdtItemId : IComparable<RdtItemId>, IEquatable<RdtItemId>
     {
         public RdtId Rdt { get; }
         public byte Id { get; }
@@ -11,6 +11,12 @@ namespace IntelOrca.Biohazard
         {
             Rdt = rtd;
             Id = id;
+        }
+
+        public int CompareTo(RdtItemId other)
+        {
+            var d = Rdt.CompareTo(other.Rdt);
+            return d != 0 ? d : Id.CompareTo(other.Id);
         }
 
         public override bool Equals(object? obj) => obj is RdtItemId id && Equals(id);
