@@ -427,7 +427,7 @@ namespace IntelOrca.Biohazard.Script
             "",
             "",
             "",
-            "",
+            "swap_var",
             "",
             "",
             "",
