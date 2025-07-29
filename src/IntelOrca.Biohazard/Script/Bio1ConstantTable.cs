@@ -8,6 +8,7 @@ namespace IntelOrca.Biohazard.Script
     {
         private const byte SCE_DOOR = 1;
         private const byte SCE_MESSAGE = 2;
+        private const byte SCE_USEITEM = 7;
         private const byte SCE_ITEMBOX = 8;
         private const byte SCE_EVENT = 9;
         private const byte SCE_SAVE = 10;
@@ -720,14 +721,14 @@ namespace IntelOrca.Biohazard.Script
         };
 
         private static readonly string[] g_sceNames = new string[] {
-            "SCE_0",
+            "SCE_NONE",
             "SCE_DOOR",
             "SCE_MESSAGE",
             "SCE_3",
             "SCE_ITEM",
             "SCE_5",
             "SCE_6",
-            "SCE_7",
+            "SCE_USEITEM",
             "SCE_ITEMBOX",
             "SCE_EVENT",
             "SCE_SAVE",
