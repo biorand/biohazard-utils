@@ -211,6 +211,17 @@ namespace IntelOrca.Biohazard.Survey
             var dict = new Dictionary<string, object>();
             var doc = new XmlDocument();
             doc.LoadXml(xml);
+            foreach (XmlNode variableNode in doc.SelectNodes("state/variables/variable")!)
+            {
+                var name = variableNode.Attributes?["name"]?.Value ?? null;
+                if (name == null)
+                    continue;
+
+                if (!int.TryParse(variableNode.InnerText, out var value))
+                    continue;
+
+                dict[name] = value;
+            }
             foreach (XmlNode flagGroupNode in doc.SelectNodes("state/flags/group")!)
             {
                 var groupName = flagGroupNode.Attributes?["name"]?.Value ?? null;

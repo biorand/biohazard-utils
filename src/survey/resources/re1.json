@@ -57,6 +57,46 @@
       "name": "inventory.items",
       "type": "re1.inventory[]",
       "offset": "0x00C38814"
+    },
+    {
+      "name": "hitscan.chris.high.shotgun",
+      "type": "s16",
+      "offset": "0x004AAD98"
+    },
+    {
+      "name": "hitscan.chris.low.shotgun",
+      "type": "s16",
+      "offset": "0x004AAD9A"
+    },
+    {
+      "name": "hitscan.chris.high.handgun",
+      "type": "s16",
+      "offset": "0x004AAD9C"
+    },
+    {
+      "name": "hitscan.chris.low.handgun",
+      "type": "s16",
+      "offset": "0x004AAD9E"
+    },
+    {
+      "name": "hitscan.jill.high.shotgun",
+      "type": "s16",
+      "offset": "0x004AADA4"
+    },
+    {
+      "name": "hitscan.jill.low.shotgun",
+      "type": "s16",
+      "offset": "0x004AADA6"
+    },
+    {
+      "name": "hitscan.jill.high.handgun",
+      "type": "s16",
+      "offset": "0x004AADA8"
+    },
+    {
+      "name": "hitscan.jill.low.handgun",
+      "type": "s16",
+      "offset": "0x004AADAA"
     }
   ],
   "flagGroups": [
@@ -120,6 +160,9 @@
     }
   ],
   "flagNames": {
+    "0:48": "302 lift (water) up",
+    "0:49": "302 lift (battery) down",
+    "0:50": "302 battery inserted",
     "0:101": "512 Partner cutscene",
     "0:123": "Ink ribbons",
     "0:124": "Lockpick",

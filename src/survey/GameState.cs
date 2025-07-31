@@ -55,6 +55,7 @@ namespace survey
             {
                 if (_values.TryGetValue(variableInfo.Name, out var value))
                 {
+                    WriteValueNow(variableInfo, value);
                 }
             }
 
@@ -106,16 +107,51 @@ namespace survey
             if (variableInfo == null)
                 return null;
 
-            if (variableInfo.Type == "s16")
+            return variableInfo.Type switch
             {
-                return ReadMemory(variableInfo.Offset, 2, false);
-            }
-            else if (variableInfo.Type == "u8")
-            {
-                return ReadMemory(variableInfo.Offset, 1, true);
-            }
+                "s64" => ReadMemory(variableInfo.Offset, 8, false),
+                "u64" => ReadMemory(variableInfo.Offset, 8, true),
+                "s32" => ReadMemory(variableInfo.Offset, 4, false),
+                "u32" => ReadMemory(variableInfo.Offset, 4, true),
+                "s16" => ReadMemory(variableInfo.Offset, 2, false),
+                "u16" => ReadMemory(variableInfo.Offset, 2, true),
+                "s8" => ReadMemory(variableInfo.Offset, 1, false),
+                "u8" => ReadMemory(variableInfo.Offset, 1, true),
+                _ => 0,
+            };
+        }
 
-            return 0;
+        private void WriteValueNow(GameStateManifest.Variable variableInfo, object value)
+        {
+            switch (variableInfo.Type)
+            {
+                case "s64":
+                    WriteMemory(variableInfo.Offset, Convert.ToInt64(value));
+                    break;
+                case "u64":
+                    WriteMemory(variableInfo.Offset, Convert.ToUInt64(value));
+                    break;
+                case "s32":
+                    WriteMemory(variableInfo.Offset, Convert.ToInt32(value));
+                    break;
+                case "u32":
+                    WriteMemory(variableInfo.Offset, Convert.ToUInt32(value));
+                    break;
+                case "s16":
+                    WriteMemory(variableInfo.Offset, Convert.ToInt16(value));
+                    break;
+                case "u16":
+                    WriteMemory(variableInfo.Offset, Convert.ToUInt16(value));
+                    break;
+                case "s8":
+                    WriteMemory(variableInfo.Offset, Convert.ToByte(value));
+                    break;
+                case "u8":
+                    WriteMemory(variableInfo.Offset, Convert.ToSByte(value));
+                    break;
+                default:
+                    break;
+            }
         }
 
         private unsafe object? ReadMemory(int offset, int size, bool unsigned)
@@ -145,6 +181,58 @@ namespace survey
             {
                 return null;
             }
+        }
+
+        private unsafe void WriteMemory(int offset, object value)
+        {
+            var buffer = stackalloc byte[16];
+            var size = 0;
+            if (value is long lValue)
+            {
+                BitConverter.TryWriteBytes(new Span<byte>(buffer, 8), lValue);
+                size = 8;
+            }
+            else if (value is ulong ulValue)
+            {
+                BitConverter.TryWriteBytes(new Span<byte>(buffer, 8), ulValue);
+                size = 8;
+            }
+            else if (value is int iValue)
+            {
+                BitConverter.TryWriteBytes(new Span<byte>(buffer, 4), iValue);
+                size = 4;
+            }
+            else if (value is uint uiValue)
+            {
+                BitConverter.TryWriteBytes(new Span<byte>(buffer, 4), uiValue);
+                size = 4;
+            }
+            else if (value is short sValue)
+            {
+                BitConverter.TryWriteBytes(new Span<byte>(buffer, 2), sValue);
+                size = 2;
+            }
+            else if (value is ushort usValue)
+            {
+                BitConverter.TryWriteBytes(new Span<byte>(buffer, 2), usValue);
+                size = 2;
+            }
+            else if (value is byte bValue)
+            {
+                buffer[0] = bValue;
+                size = 1;
+            }
+            else if (value is sbyte sbValue)
+            {
+                buffer[0] = (byte)sbValue;
+                size = 1;
+            }
+            else
+            {
+                throw new ArgumentException("Unsupported value type", nameof(value));
+            }
+
+            WriteProcessMemory(process.Handle, offset, (nint)buffer, size, out var bytesRead);
         }
 
         private unsafe ReFlagArray ReadFlagArray(int offset, int count)
