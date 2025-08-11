@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Copyright>Copyright (C) Ted John 2025</Copyright>
+    <Product>HitScan Editor</Product>
+    <Version>1.0.0</Version>
+    <RootNamespace>IntelOrca.Biohazard.BioRand</RootNamespace>
+    <ApplicationIcon>biorand.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="biorand.ico" />
+  </ItemGroup>
+  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation">
+    <Exec Command="git describe --long --always --exclude=* --abbrev=7"
+      ConsoleToMSBuild="True"
+      IgnoreExitCode="False">
+      <Output PropertyName="SourceRevisionId" TaskParameter="ConsoleOutput" />
+    </Exec>
+  </Target>
+</Project>
