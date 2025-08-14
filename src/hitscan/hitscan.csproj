@@ -8,7 +8,7 @@
     <Copyright>Copyright (C) Ted John 2025</Copyright>
     <Product>HitScan Editor</Product>
     <Version>1.0.0</Version>
-    <RootNamespace>IntelOrca.Biohazard.BioRand</RootNamespace>
+    <RootNamespace>IntelOrca.Biohazard.HitScan</RootNamespace>
     <ApplicationIcon>biorand.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

@@ -5,51 +5,36 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:IntelOrca.Biohazard.HitScan"
         mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=local:WeaponListData}"
         Title="HitScan Editor"
         WindowStartupLocation="CenterScreen"
-        Width="800"
-        Height="800">
+        Width="800">
     <Border Margin="8">
         <StackPanel>
             <GroupBox Header="Status">
-                <TextBlock>Status: Searching for game...</TextBlock>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="0,0,4,0">Status:</TextBlock>
+                    <TextBlock Text="{Binding ProcessStatus}" />
+                </StackPanel>
             </GroupBox>
             <GroupBox Header="Values">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Column="0" Grid.Row="0">SHOTGUN MIN</TextBlock>
-                    <TextBlock Grid.Column="0" Grid.Row="1">SHOTGUN MAX</TextBlock>
-                    <TextBlock Grid.Column="0" Grid.Row="2">HANDGUN MIN</TextBlock>
-                    <TextBlock Grid.Column="0" Grid.Row="3">HANDGUN MAX</TextBlock>
-                    <TextBlock Grid.Column="0" Grid.Row="4">UZI MIN</TextBlock>
-                    <TextBlock Grid.Column="0" Grid.Row="5">UZI MAX</TextBlock>
-
-                    <TextBox Grid.Column="1" Grid.Row="0" Text="0" />
-                    <TextBox Grid.Column="1" Grid.Row="1" Text="0" />
-                    <TextBox Grid.Column="1" Grid.Row="2" Text="0" />
-                    <TextBox Grid.Column="1" Grid.Row="3" Text="0" />
-                    <TextBox Grid.Column="1" Grid.Row="4" Text="0" />
-                    <TextBox Grid.Column="1" Grid.Row="5" Text="0" />
-                </Grid>
+                <ListView ItemsSource="{Binding Weapons}" SelectedItem="{Binding SelectedWeapon}">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <local:WpEdit />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
             </GroupBox>
             <GroupBox Header="Preview">
-                <Canvas Height="500">
-                    <TextBlock Canvas.Top="40">HI [-1500]</TextBlock>
-                    <TextBlock Canvas.Left="500" Canvas.Top="40">SHOOT UP [-1500]</TextBlock>
-                    <TextBlock Canvas.Top="90">LO [-3500]</TextBlock>
-                </Canvas>
+                <Grid Height="512">
+                    <local:WpPreview WeaponData="{Binding SelectedWeapon}" />
+                </Grid>
             </GroupBox>
         </StackPanel>
     </Border>
