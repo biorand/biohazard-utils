@@ -19,7 +19,9 @@ jobs:
       run: |
         dotnet publish -c Release --no-build -o out src\emd
         dotnet publish -c Release --no-build -o out src\emdui
+        dotnet publish -c Release --no-build -o out src\hitscan
         dotnet publish -c Release --no-build -o out src\rdt
+        dotnet publish -c Release --no-build -o out src\rofs
         dotnet publish -c Release --no-build -o out src\sap
         dotnet publish -c Release --no-build -o out src\scd
         dotnet publish -c Release --no-build -o out src\survey

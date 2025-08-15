@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>rofs</RootNamespace>
     <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\IntelOrca.Biohazard\IntelOrca.Biohazard.csproj" />
