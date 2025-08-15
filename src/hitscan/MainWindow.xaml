@@ -8,16 +8,35 @@
         d:DataContext="{d:DesignInstance Type=local:WeaponListData}"
         Title="HitScan Editor"
         WindowStartupLocation="CenterScreen"
-        Width="800">
+        Width="800"
+        x:Name="root">
     <Border Margin="8">
-        <StackPanel>
-            <GroupBox Header="Status">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="0,0,4,0">Status:</TextBlock>
-                    <TextBlock Text="{Binding ProcessStatus}" />
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="3" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <GroupBox Grid.Row="0" Header="Status">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,4,0">Game:</TextBlock>
+                        <ComboBox Width="128" ItemsSource="{Binding Binders, ElementName=root}" SelectedItem="{Binding SelectedBinder, ElementName=root}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,4,0">Status:</TextBlock>
+                        <TextBlock Text="{Binding ProcessStatus}" />
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
-            <GroupBox Header="Values">
+            <GroupBox Grid.Row="1" Header="Values" Margin="0,0,0,4">
                 <ListView ItemsSource="{Binding Weapons}" SelectedItem="{Binding SelectedWeapon}">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
@@ -31,11 +50,12 @@
                     </ListView.ItemTemplate>
                 </ListView>
             </GroupBox>
-            <GroupBox Header="Preview">
+            <GridSplitter Grid.Row="2" Background="White" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+            <GroupBox Grid.Row="3" Header="Preview">
                 <Grid Height="512">
                     <local:WpPreview WeaponData="{Binding SelectedWeapon}" />
                 </Grid>
             </GroupBox>
-        </StackPanel>
+        </Grid>
     </Border>
 </Window>

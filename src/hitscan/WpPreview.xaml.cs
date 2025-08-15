@@ -57,44 +57,26 @@ namespace IntelOrca.Biohazard.HitScan
             if (wp == null)
                 return;
 
-            grid.Children.Add(new PreviewLine()
-            {
-                Foreground = Brushes.Blue,
-                Text = "LO",
-                Value = wp.LowCap,
-                Margin = GetMargin(wp.LowCap)
-            });
-            grid.Children.Add(new PreviewLine()
-            {
-                Foreground = Brushes.Red,
-                Text = "HI",
-                Value = wp.HighCap,
-                Margin = GetMargin(wp.HighCap)
-            });
+            AddLine(false, Brushes.Blue, "LO", wp.LowCap);
+            AddLine(false, Brushes.Red, "HI", wp.HighCap);
+
+            AddLine(true, Brushes.Green, "LAST HIGH", wp.RecentHigh);
+            AddLine(true, Brushes.Green, "LAST NEUTRAL", wp.RecentNeutral);
+            AddLine(true, Brushes.Green, "LAST LOW", wp.RecentLow);
+        }
+
+        private void AddLine(bool solid, Brush color, string text, int value)
+        {
+            if (value == 0)
+                return;
 
             grid.Children.Add(new PreviewLine()
             {
-                Foreground = Brushes.Green,
-                Text = "LAST HIGH",
-                Value = wp.RecentHigh,
-                Margin = GetMargin(wp.RecentHigh),
-                SolidLine = true
-            });
-            grid.Children.Add(new PreviewLine()
-            {
-                Foreground = Brushes.Green,
-                Text = "LAST NEUTRAL",
-                Value = wp.RecentNeutral,
-                Margin = GetMargin(wp.RecentNeutral),
-                SolidLine = true
-            });
-            grid.Children.Add(new PreviewLine()
-            {
-                Foreground = Brushes.Green,
-                Text = "LAST LOW",
-                Value = wp.RecentLow,
-                Margin = GetMargin(wp.RecentLow),
-                SolidLine = true
+                Foreground = color,
+                Text = text,
+                Value = value,
+                Margin = GetMargin(value),
+                SolidLine = solid
             });
         }
 

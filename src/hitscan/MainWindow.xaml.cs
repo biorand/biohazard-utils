@@ -1,39 +1,36 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.ComponentModel;
 using System.Windows;
 
 namespace IntelOrca.Biohazard.HitScan
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private Re1Binder _binder;
+        public event PropertyChangedEventHandler PropertyChanged;
 
-        public WeaponListData WeaponListData { get; } = new WeaponListData();
+        private IBinder _binder;
 
         public MainWindow()
         {
             InitializeComponent();
-
-            DataContext = WeaponListData;
-
-            _binder = new Re1Binder
-            {
-                Data = WeaponListData
-            };
+            SelectedBinder = Binders[0];
         }
-    }
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct HitScanData
-    {
-        public HitScanValues Shotgun;
-        public HitScanValues Handgun;
-        public HitScanValues Uzi;
-    }
+        public IBinder SelectedBinder
+        {
+            get => _binder;
+            set
+            {
+                if (_binder != value)
+                {
+                    _binder = value;
+                    DataContext = _binder.Data;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedBinder)));
+                }
+            }
+        }
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct HitScanValues
-    {
-        public short Hi;
-        public short Lo;
+        public IBinder[] Binders { get; } = new IBinder[] {
+            new Re1Binder(),
+            new Re2Binder() };
     }
 }
