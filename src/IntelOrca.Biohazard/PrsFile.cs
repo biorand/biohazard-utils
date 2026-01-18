@@ -2,20 +2,24 @@
 
 namespace IntelOrca.Biohazard
 {
+    /// <summary>
+    /// Wraps or compresses a buffer to a PRS-compressed buffer with capability to decompress it back.
+    /// PRS is a LZ77 based compression algorithm by Sega designed for the Saturn, and Dreamcast. It was used in
+    /// Resident Evil Code: Veronica which debuted on the Sega Dreamcast.
+    /// </summary>
     public sealed class PrsFile
     {
         private readonly ReadOnlyMemory<byte> _compressed;
         private ReadOnlyMemory<byte>? _uncompressed;
-        private object _sync = new object();
+        private readonly object _sync = new object();
 
         public ReadOnlyMemory<byte> Data => _compressed;
 
         public static PrsFile Compress(ReadOnlyMemory<byte> uncompressed)
         {
-            // var bufferSize = 0x1FFF;
+            // var bufferSize = 8192 - 1;
             var bufferSize = 256 - 1;
-            var compressed = csharp_prs.Prs.Compress(uncompressed.ToArray(), bufferSize);
-            return new PrsFile(compressed);
+            return new PrsFile(Prs.Compress(uncompressed.ToArray(), bufferSize));
         }
 
         public PrsFile(ReadOnlyMemory<byte> compressed)
@@ -33,11 +37,7 @@ namespace IntelOrca.Biohazard
                     {
                         if (_uncompressed == null)
                         {
-                            var span = _compressed.Span;
-                            fixed (byte* src = span)
-                            {
-                                _uncompressed = csharp_prs.Prs.Decompress(src, span.Length);
-                            }
+                            _uncompressed = Prs.Decompress(_compressed.Span);
                         }
                     }
                 }
