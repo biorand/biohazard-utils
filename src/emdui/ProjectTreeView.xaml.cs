@@ -1065,15 +1065,22 @@ namespace emdui
 
         private void OpenInBlender()
         {
-            using (var blenderSupport = new BlenderSupport())
+            try
             {
-                ExportToObj(blenderSupport.ImportedObjectPath);
-                if (blenderSupport.EditInBlender())
+                using (var blenderSupport = new BlenderSupport())
                 {
-                    ImportFromObj(blenderSupport.ExportedObjectPath);
-                    CreateChildren();
-                    MainWindow.Instance.LoadMesh(Model.GetMesh(0), GetTimFile());
+                    ExportToObj(blenderSupport.ImportedObjectPath);
+                    if (blenderSupport.EditInBlender())
+                    {
+                        ImportFromObj(blenderSupport.ExportedObjectPath);
+                        CreateChildren();
+                        MainWindow.Instance.LoadMesh(Model.GetMesh(0), GetTimFile());
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Blender", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
