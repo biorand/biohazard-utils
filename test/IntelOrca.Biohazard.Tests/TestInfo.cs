@@ -12,18 +12,20 @@ namespace IntelOrca.Biohazard.Tests
             var fileName = $"re{game + 1}";
             if (game == 3)
                 fileName = "recv";
-            var places = new[]
+            for (var letter = 'A'; letter <= 'Z'; letter++)
             {
-                $@"D:\games\{fileName}",
-                $@"F:\games\{fileName}",
-                $@"M:\games\{fileName}"
-            };
-
-            foreach (var place in places)
-            {
-                if (Directory.Exists(place))
+                var places = new[]
                 {
-                    return place;
+                    $@"{letter}:\games\{fileName}",
+                    $"/mnt/{char.ToLowerInvariant(letter)}/games/{fileName}",
+                };
+
+                foreach (var place in places)
+                {
+                    if (Directory.Exists(place))
+                    {
+                        return place;
+                    }
                 }
             }
             throw new Exception("Unable to find RE.");
