@@ -145,7 +145,15 @@ namespace IntelOrca.Biohazard.Script.Compilation
                     }
                     else if (token.Kind == TokenKind.Label)
                     {
-                        if (!AddLabel(token.Text.Substring(0, token.Text.Length - 1)))
+                        var labelName = token.Text.Substring(0, token.Text.Length - 1);
+                        if (labelName.Contains(' '))
+                        {
+                            // composed "name + delta" definitions are informational;
+                            // references resolve against the base label with the delta
+                            // baked into the operand value
+                            break;
+                        }
+                        if (!AddLabel(labelName))
                         {
                             EmitError(in token, ErrorCodes.LabelAlreadyDefined, token.Text);
                         }
