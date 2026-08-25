@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using IntelOrca.Biohazard.Room;
 
@@ -25,6 +26,8 @@ namespace IntelOrca.Biohazard.Script.Compilation
         private List<LabelReference> _labelReferences = new List<LabelReference>();
         private List<byte> _procData = new List<byte>();
         private List<byte[]> _procedures = new List<byte[]>();
+        private List<(string, int)[]> _procedureLabels = new List<(string, int)[]>();
+        private List<DeferredLabelReference> _deferredLabelReferences = new List<DeferredLabelReference>();
         private int _currentOpcodeOffset;
         private int _currentOpcodeLength;
         private int _currentOpcode;
@@ -307,6 +310,8 @@ namespace IntelOrca.Biohazard.Script.Compilation
         private void BeginScript()
         {
             _procedures.Clear();
+            _procedureLabels.Clear();
+            _deferredLabelReferences.Clear();
             _labels.Clear();
             _labelReferences.Clear();
             _procData.Clear();
@@ -327,9 +332,14 @@ namespace IntelOrca.Biohazard.Script.Compilation
 
             if (Errors.ErrorCount == 0)
             {
+                EndProcedure();
+                ResolveDeferredLabelReferences();
+            }
+
+            if (Errors.ErrorCount == 0)
+            {
                 if (_version == BioVersion.Biohazard1)
                 {
-                    EndProcedure();
                     if (_currScriptKind != BioScriptKind.Event)
                     {
                         var procData = _procedures[0].ToList();
@@ -364,8 +374,6 @@ namespace IntelOrca.Biohazard.Script.Compilation
                 }
                 else
                 {
-                    EndProcedure();
-
                     var offset = _procedures.Count * 2;
                     foreach (var p in _procedures)
                     {
@@ -395,9 +403,68 @@ namespace IntelOrca.Biohazard.Script.Compilation
         {
             FixLabelReferences();
             _procedures.Add(_procData.ToArray());
+            _procedureLabels.Add(_labels.ToArray());
             _labels.Clear();
             _labelReferences.Clear();
             _procData.Clear();
+        }
+
+        private void ResolveDeferredLabelReferences()
+        {
+            if (_deferredLabelReferences.Count == 0)
+                return;
+
+            // Procedures are laid out back to back: a table of N uint16
+            // offsets followed by each procedure's bytes. The header size is
+            // the same on both sides of a reference so it cancels out.
+            var procBase = new int[_procedures.Count];
+            var acc = 0;
+            for (var i = 0; i < _procedures.Count; i++)
+            {
+                procBase[i] = acc;
+                acc += _procedures[i].Length;
+            }
+
+            foreach (var r in _deferredLabelReferences)
+            {
+                var token = r.Token;
+                var found = false;
+                var targetProc = -1;
+                var labelAddress = 0;
+                for (var i = 0; i < _procedureLabels.Count && !found; i++)
+                {
+                    var index = Array.FindIndex(_procedureLabels[i], x => x.Item1 == token.Text);
+                    if (index != -1)
+                    {
+                        found = true;
+                        targetProc = i;
+                        labelAddress = _procedureLabels[i][index].Item2;
+                    }
+                }
+
+                if (!found)
+                {
+                    EmitError(in token, ErrorCodes.UnknownLabel, token.Text);
+                    continue;
+                }
+
+                EmitWarning(in token, ErrorCodes.CrossProcedureLabel, token.Text);
+
+                var value = (procBase[targetProc] + labelAddress) - (procBase[r.ProcIndex] + r.BaseAddress);
+                var procData = _procedures[r.ProcIndex];
+                var offset = r.WriteOffset;
+                if (r.WriteLength == 1)
+                {
+                    procData[offset] = (byte)(procData[offset] + value);
+                }
+                else
+                {
+                    var customOffset = (short)(procData[offset + 0] | procData[offset + 1] << 8);
+                    var updatedValue = (short)(value + customOffset);
+                    procData[offset + 0] = (byte)(updatedValue & 0xFF);
+                    procData[offset + 1] = (byte)(updatedValue >> 8 & 0xFF);
+                }
+            }
         }
 
         private Dictionary<string, int> GetAllProcedureNames(Token[] tokens)
@@ -655,7 +722,12 @@ namespace IntelOrca.Biohazard.Script.Compilation
                 var labelIndex = _labels.FindIndex(x => x.Item1 == token.Text);
                 if (labelIndex == -1)
                 {
-                    EmitError(in token, ErrorCodes.UnknownLabel, token.Text);
+                    // The label may be defined within another procedure.
+                    // Defer resolution until all procedures are known.
+                    if (_version != BioVersion.Biohazard1)
+                        _deferredLabelReferences.Add(new DeferredLabelReference(_procedures.Count, labelReference.WriteOffset, labelReference.WriteLength, labelReference.BaseAddress, token));
+                    else
+                        EmitError(in token, ErrorCodes.UnknownLabel, token.Text);
                 }
                 else
                 {
@@ -719,6 +791,24 @@ namespace IntelOrca.Biohazard.Script.Compilation
 
             public LabelReference(int writeOffset, byte writeLength, int baseAddress, Token token)
             {
+                WriteOffset = writeOffset;
+                WriteLength = writeLength;
+                BaseAddress = baseAddress;
+                Token = token;
+            }
+        }
+
+        private readonly struct DeferredLabelReference
+        {
+            public int ProcIndex { get; }
+            public int WriteOffset { get; }
+            public byte WriteLength { get; }
+            public int BaseAddress { get; }
+            public Token Token { get; }
+
+            public DeferredLabelReference(int procIndex, int writeOffset, byte writeLength, int baseAddress, Token token)
+            {
+                ProcIndex = procIndex;
                 WriteOffset = writeOffset;
                 WriteLength = writeLength;
                 BaseAddress = baseAddress;
