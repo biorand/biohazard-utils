@@ -133,11 +133,20 @@ namespace IntelOrca.Biohazard
                 name = table[value];
             if (string.IsNullOrEmpty(name))
                 return $"{prefix}{value:X2}";
-            return $"{prefix}{name}"
-                .Replace(" ", "_")
-                .Replace("(", "")
-                .Replace(")", "")
-                .ToUpperInvariant();
+            // produce an identifier the script lexer can parse as a single symbol:
+            // anything outside [A-Za-z0-9_] becomes '_', runs collapsed
+            var sb = new System.Text.StringBuilder($"{prefix}{name}".Length);
+            foreach (var ch in $"{prefix}{name}")
+            {
+                if (char.IsLetterOrDigit(ch) || ch == '_')
+                    sb.Append(ch);
+                else
+                    sb.Append('_');
+            }
+            var result = sb.ToString().ToUpperInvariant();
+            while (result.Contains("__"))
+                result = result.Replace("__", "_");
+            return result;
         }
 
         public static void SetElement<T>(this List<T> list, int index, T value)

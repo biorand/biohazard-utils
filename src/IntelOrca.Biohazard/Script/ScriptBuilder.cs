@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace IntelOrca.Biohazard.Script
 {
@@ -167,7 +168,40 @@ namespace IntelOrca.Biohazard.Script
 
         public override string ToString()
         {
+            // prepass: references that point into the middle of a rendered opcode
+            // line are redirected to that line's start; overlapping recorded spans
+            // can chain, so resolve each redirect transitively to the outermost line
             var offsetMap = new Dictionary<int, int>();
+            foreach (var line in _lines)
+            {
+                if (line.Offset == 0 || line.Length == 0)
+                    continue;
+                var midline = _labelOffsets.GetViewBetween(line.Offset, line.EndOffset - 1);
+                foreach (var offset in midline)
+                {
+                    if (offset != line.Offset)
+                        offsetMap[offset] = line.Offset;
+                }
+            }
+
+            var resolvedNames = new Dictionary<string, string>();
+            foreach (var key in offsetMap.Keys)
+            {
+                var target = key;
+                var delta = 0;
+                while (offsetMap.TryGetValue(target, out var next))
+                {
+                    delta += target - next;
+                    target = next;
+                }
+                var name = GetLabelName(target);
+                if (delta > 0)
+                    name += " + " + delta;
+                else if (delta < 0)
+                    name += " - " + -delta;
+                resolvedNames[GetLabelName(key)] = name;
+            }
+
             var sb = new StringBuilder();
             var lastOffset = -1;
             foreach (var line in _lines)
@@ -176,22 +210,20 @@ namespace IntelOrca.Biohazard.Script
                 {
                     if (AssemblyFormat)
                     {
-                        var labelRequired = false;
-                        var offsets = _labelOffsets.GetViewBetween(line.Offset, line.EndOffset - 1);
-                        foreach (var offset in offsets)
+                        // offsets redirected elsewhere are referenced as
+                        // "name + delta" operands; a definition here would produce a
+                        // label the assembler cannot parse
+                        if (!offsetMap.ContainsKey(line.Offset))
                         {
-                            labelRequired = true;
-                            if (offset != line.Offset)
+                            var labelRequired = _labelOffsets.Contains(line.Offset) ||
+                                                _labelOffsets.GetViewBetween(line.Offset, line.EndOffset - 1).Count != 0;
+                            if (labelRequired)
                             {
-                                offsetMap[offset] = line.Offset;
+                                sb.Append('\n');
+                                sb.Append(GetLabelName(line.Offset));
+                                sb.Append(':');
+                                sb.Append('\n');
                             }
-                        }
-                        if (labelRequired)
-                        {
-                            sb.Append('\n');
-                            sb.Append(GetLabelName(line.Offset));
-                            sb.Append(':');
-                            sb.Append('\n');
                         }
                     }
                     else
@@ -199,6 +231,8 @@ namespace IntelOrca.Biohazard.Script
                         var offsets = _labelOffsets.GetViewBetween(lastOffset + 1, line.Offset);
                         foreach (var offset in offsets)
                         {
+                            if (offsetMap.ContainsKey(offset))
+                                continue;
                             sb.Append('\n');
                             sb.Append(GetLabelName(offset));
                             sb.Append(':');
@@ -211,16 +245,14 @@ namespace IntelOrca.Biohazard.Script
                 sb.Append(line.Text);
                 sb.Append('\n');
             }
-            foreach (var kvp in offsetMap)
+
+            // single-pass whole-word rewrite of redirected reference names
+            if (resolvedNames.Count != 0)
             {
-                var oldName = GetLabelName(kvp.Key);
-                var newName = GetLabelName(kvp.Value);
-                var delta = kvp.Key - kvp.Value;
-                if (delta > 0)
-                    newName += " + " + delta;
-                else
-                    newName += " - " + -delta;
-                sb.Replace(oldName, newName);
+                var text = sb.ToString();
+                text = Regex.Replace(text, @"\boff_[0-9A-Fa-f]+\b", m =>
+                    resolvedNames.TryGetValue(m.Value, out var replacement) ? replacement : m.Value);
+                return text;
             }
             return sb.ToString();
         }
