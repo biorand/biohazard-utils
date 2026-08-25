@@ -108,7 +108,7 @@ namespace IntelOrca.Biohazard.Script
                 _constantMap.Add("I_GOSUB", (byte)OpcodeV2.Gosub);
                 var constChars = new char[]
                 {
-                    'e', 'i', 's', 'p', 'r', 't', 'w',
+                    'e', 'f', 'i', 's', 'p', 'r', 't', 'w',
                 };
                 foreach (var ch in constChars)
                 {
