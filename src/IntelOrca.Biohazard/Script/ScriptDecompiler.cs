@@ -22,6 +22,15 @@ namespace IntelOrca.Biohazard.Script
 
         public bool AssemblyFormat => _sb.AssemblyFormat;
 
+        /// <summary>
+        /// Byte range of the script currently being disassembled. Label targets
+        /// outside this range belong to another script and are emitted as raw
+        /// operand values instead of unresolvable label references.
+        /// </summary>
+        public int ScriptStart { get; set; } = int.MinValue;
+        public int ScriptEnd { get; set; } = int.MaxValue;
+        private bool InScript(int offset) => offset >= ScriptStart && offset < ScriptEnd;
+
         public ScriptDecompiler(bool assemblyFormat, bool listingFormat)
         {
             _sb.AssemblyFormat = assemblyFormat;
@@ -705,6 +714,11 @@ namespace IntelOrca.Biohazard.Script
                             {
                                 var blockLen = br.ReadByte();
                                 var labelOffset = offset + blockLen;
+                                if (!InScript(labelOffset))
+                                {
+                                    parameters.Add(blockLen);
+                                    break;
+                                }
                                 _sb.InsertLabel(labelOffset);
                                 parameters.Add(_sb.GetLabelName(labelOffset));
                                 break;
@@ -713,6 +727,11 @@ namespace IntelOrca.Biohazard.Script
                             {
                                 var blockLen = br.ReadByte();
                                 var labelOffset = offset + instructionLength + blockLen;
+                                if (!InScript(labelOffset))
+                                {
+                                    parameters.Add(blockLen);
+                                    break;
+                                }
                                 _sb.InsertLabel(labelOffset);
                                 parameters.Add(_sb.GetLabelName(labelOffset));
                                 break;
@@ -724,6 +743,11 @@ namespace IntelOrca.Biohazard.Script
                                 var labelOffset = offset + instructionLength + blockLen;
                                 if (c == '~')
                                     labelOffset = offset + blockLen;
+                                if (!InScript(labelOffset))
+                                {
+                                    parameters.Add(blockLen);
+                                    break;
+                                }
                                 _sb.InsertLabel(labelOffset);
                                 parameters.Add(_sb.GetLabelName(labelOffset));
                                 break;
@@ -732,6 +756,11 @@ namespace IntelOrca.Biohazard.Script
                             {
                                 var blockLen = br.ReadInt16();
                                 var labelOffset = offset + blockLen;
+                                if (!InScript(labelOffset))
+                                {
+                                    parameters.Add(blockLen);
+                                    break;
+                                }
                                 _sb.InsertLabel(labelOffset);
                                 parameters.Add(_sb.GetLabelName(labelOffset));
                                 break;

@@ -55,13 +55,24 @@ namespace IntelOrca.Biohazard.Script
         internal void ReadEventScript(ReadOnlyMemory<byte> data, IBioScriptVisitor visitor, int eventIndex)
         {
             var br = new BinaryReader(new SpanStream(data));
+            SetScriptBounds(visitor, BaseOffset, data.Length);
             ReadScript1Event(br, data.Length, BioScriptKind.Event, visitor, eventIndex);
+        }
+
+        private static void SetScriptBounds(IBioScriptVisitor visitor, int start, int length)
+        {
+            if (visitor is ScriptDecompiler decompiler)
+            {
+                decompiler.ScriptStart = start;
+                decompiler.ScriptEnd = start + length;
+            }
         }
 
         private void ReadScript1(BinaryReader br, int length, BioScriptKind kind, IBioScriptVisitor visitor, int eventIndex)
         {
             var scriptEnd = kind == BioScriptKind.Event ? length : br.ReadUInt16();
             var constantTable = new Bio1ConstantTable();
+            SetScriptBounds(visitor, BaseOffset, length);
 
             visitor.VisitBeginScript(kind);
             visitor.VisitBeginSubroutine(eventIndex);
