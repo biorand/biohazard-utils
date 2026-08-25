@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -110,7 +111,7 @@ namespace IntelOrca.Biohazard.Model
             _sb.Append(' ');
             foreach (var p in parameters)
             {
-                _sb.AppendFormat("{0:0.000000}", p);
+                _sb.AppendFormat(CultureInfo.InvariantCulture, "{0:0.000000}", p);
                 _sb.Append(' ');
             }
             _sb.Remove(_sb.Length - 1, 1);
