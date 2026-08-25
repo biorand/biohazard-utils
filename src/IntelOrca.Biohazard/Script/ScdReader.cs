@@ -261,13 +261,21 @@ namespace IntelOrca.Biohazard.Script
             var opcode = br.ReadByte();
             var instructionSize = constantTable.GetInstructionSize(opcode, br);
             if (instructionSize == 0)
+            {
+                br.BaseStream.Position = instructionPosition;
                 return false;
+            }
 
             br.BaseStream.Position = instructionPosition + 1;
             var bytes = new byte[instructionSize];
             bytes[0] = opcode;
             if (br.Read(bytes, 1, instructionSize - 1) != instructionSize - 1)
+            {
+                // not enough bytes left for this instruction: rewind so the caller
+                // can emit the remainder as trailing data instead of losing it
+                br.BaseStream.Position = instructionPosition;
                 return false;
+            }
 
             visitor.VisitOpcode(baseOffset + instructionPosition, new Span<byte>(bytes));
             return true;
