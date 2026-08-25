@@ -8,6 +8,6 @@
     <PackageReference Include="Spectre.Console.Cli" Version="0.50.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\IntelOrca.BioHazard\IntelOrca.Biohazard.csproj" />
+    <ProjectReference Include="..\IntelOrca.Biohazard\IntelOrca.Biohazard.csproj" />
   </ItemGroup>
 </Project>

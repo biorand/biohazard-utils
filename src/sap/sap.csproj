@@ -9,6 +9,6 @@
     -->
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\IntelOrca.BioHazard\IntelOrca.BioHazard.csproj" />
+    <ProjectReference Include="..\IntelOrca.Biohazard\IntelOrca.Biohazard.csproj" />
   </ItemGroup>
 </Project>
