@@ -242,6 +242,7 @@ namespace IntelOrca.Biohazard.Script
                         while (ReadRe1Opcode(opcodeStream, constantTable, visitor, baseOffset2))
                         {
                         }
+                        EmitTrailing(visitor, opcodeStream, baseOffset2, opcodes);
                     }
                     visitor.VisitEndEventOpcode();
                 } while (next != 0 && (br.BaseStream.Position < stream.Length));
