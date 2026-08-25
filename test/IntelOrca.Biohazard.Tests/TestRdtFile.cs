@@ -329,10 +329,10 @@ namespace IntelOrca.Biohazard.Tests
                 {
                     AssertRebuild(version, fileName);
                 }
-                catch
+                catch (Exception ex)
                 {
                     fail = true;
-                    _output.WriteLine($"{fileName}: FAIL");
+                    _output.WriteLine($"{fileName}: FAIL {ex.Message}");
                 }
             }
             Assert.False(fail);

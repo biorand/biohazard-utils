@@ -121,7 +121,11 @@ namespace IntelOrca.Biohazard.Tests
                     var files = repo.GetFiles(rdtDirectory);
                     foreach (var rdtPath in files)
                     {
-                        results.Add(rdtPath);
+                        // GetRdt reconstructs the full archive path from the file
+                        // name; archive listings use '\' separators regardless of
+                        // platform so split on both
+                        var fileName = rdtPath.Split('/', '\\')[^1];
+                        results.Add(fileName);
                     }
                     break;
                 }
