@@ -220,6 +220,42 @@ namespace IntelOrca.Biohazard.Script
             return "";
         }
 
+        // act_motion is the single variable-size sub-ISA op: 2 bytes when the
+        // param low nibble is clear (motion id only), else 10 bytes (motion id
+        // plus a target position / entity + flags)
+        private static readonly (string name, byte opcode, Re1SubIsa isa, int length)[] _subOpcodeExt =
+        {
+            ("act_motion_path", 0x81, Re1SubIsa.Actor, 10),
+        };
+
+        public string GetSubOpcodeSignature(byte opcode, Re1SubIsa isa, int instructionLength)
+        {
+            foreach (var ext in _subOpcodeExt)
+            {
+                if (ext.opcode == opcode && ext.isa == isa && ext.length == instructionLength)
+                {
+                    return ext.name switch
+                    {
+                        // TODO 0x93: word0/word1 become selector + index instead
+                        // of position x/y
+                        "act_motion_path" => "act_motion_path:uUUUuu",
+                        _ => "",
+                    };
+                }
+            }
+            return GetSubOpcodeSignature(opcode, isa);
+        }
+
+        public bool IsValidSubInstructionLength(byte opcode, Re1SubIsa isa, int length)
+        {
+            foreach (var ext in _subOpcodeExt)
+            {
+                if (ext.opcode == opcode && ext.isa == isa && ext.length == length)
+                    return true;
+            }
+            return GetSubInstructionSize(opcode, null, isa) == length;
+        }
+
         // TODO 81: +8 payload bytes when the low nibble of the param byte is set
         private int GetActorSize(byte opcode, BinaryReader? br)
         {
@@ -279,9 +315,10 @@ namespace IntelOrca.Biohazard.Script
             };
         }
 
-        public byte? FindSubOpcode(string name, out Re1SubIsa isa)
+        public byte? FindSubOpcode(string name, out Re1SubIsa isa, out int length)
         {
             isa = Re1SubIsa.Actor;
+            length = 0;
             for (var pass = 0; pass < 2; pass++)
             {
                 var table = pass == 0 ? _actorOpcodes : _tweenOpcodes;
@@ -299,8 +336,18 @@ namespace IntelOrca.Biohazard.Script
                     if (name == opcodeName)
                     {
                         isa = pass == 0 ? Re1SubIsa.Actor : Re1SubIsa.Tween;
+                        length = GetSubInstructionSize((byte)i, null, isa);
                         return (byte)i;
                     }
+                }
+            }
+            foreach (var ext in _subOpcodeExt)
+            {
+                if (name == ext.name)
+                {
+                    isa = ext.isa;
+                    length = ext.length;
+                    return ext.opcode;
                 }
             }
             return null;
@@ -946,7 +993,7 @@ namespace IntelOrca.Biohazard.Script
             "",
             "",
             "act_reset", /* 80 resets +0x85 then ends the stream (falls through into act_end) */
-            "act_motion", /* 81 */
+            "act_motion:u", /* 81 (10-byte target form: act_motion_path) */
             "act_motion_bitclr", /* 82 */
             "act_anim_seq:UUU", /* 83 */
             "act_anim_flags:bbb", /* 84 */

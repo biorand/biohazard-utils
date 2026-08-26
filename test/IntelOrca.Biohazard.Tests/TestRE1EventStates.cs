@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using IntelOrca.Biohazard.Extensions;
 using IntelOrca.Biohazard.Room;
 using IntelOrca.Biohazard.Script;
 using Xunit;
@@ -63,6 +64,17 @@ namespace IntelOrca.Biohazard.Tests
             foreach (var issue in issues.Take(40))
                 _output.WriteLine("  " + issue);
             Assert.True(issues.Count == 0, $"{issues.Count} ill-formed event stream(s)");
+        }
+
+        [Fact]
+        public void RE1_ActorMotionPayloadNames()
+        {
+            // the 10-byte act_motion form (param low nibble set) must render
+            // with its name, not as raw "unk" bytes; ROOM1060 ev8 uses it
+            var rdt = GetRdt(BioVersion.Biohazard1, "ROOM1060.RDT");
+            var text = rdt.DisassembleScd();
+            Assert.Contains("act_motion_path", text);
+            Assert.DoesNotContain("unk 129", text);
         }
 
         private void WalkEvent(ReadOnlySpan<byte> data, string tag, List<string> issues)

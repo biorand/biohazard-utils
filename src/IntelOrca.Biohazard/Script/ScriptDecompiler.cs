@@ -714,23 +714,25 @@ namespace IntelOrca.Biohazard.Script
             br.BaseStream.Position = originalStreamPosition + 1;
 
             string signature;
-            int expectedLength;
             if (subIsa != null)
             {
                 var bio1ConstantTable = (Bio1ConstantTable)_constantTable;
-                signature = bio1ConstantTable.GetSubOpcodeSignature(opcode, subIsa.Value);
-                // static size: a longer-than-declared span (variable-size ops)
-                // must fall through to the raw "unk" rendering below
-                expectedLength = bio1ConstantTable.GetSubInstructionSize(opcode, null, subIsa.Value);
+                // length-aware: variable-size ops (act_motion) pick their
+                // signature from the actual instruction length
+                signature = bio1ConstantTable.GetSubOpcodeSignature(opcode, subIsa.Value, instructionLength);
+                if (signature == "" || !bio1ConstantTable.IsValidSubInstructionLength(opcode, subIsa.Value, instructionLength))
+                {
+                    signature = "";
+                }
             }
             else
             {
                 signature = _constantTable.GetOpcodeSignature(opcode, isEventOpcode);
-                expectedLength = _constantTable.GetInstructionSize(opcode, br, isEventOpcode);
-            }
-            if (expectedLength == 0 || expectedLength != instructionLength)
-            {
-                signature = "";
+                var expectedLength = _constantTable.GetInstructionSize(opcode, br, isEventOpcode);
+                if (expectedLength == 0 || expectedLength != instructionLength)
+                {
+                    signature = "";
+                }
             }
 
             var colonIndex = signature.IndexOf(':');

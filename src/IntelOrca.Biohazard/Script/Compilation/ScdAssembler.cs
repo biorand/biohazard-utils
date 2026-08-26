@@ -554,11 +554,12 @@ namespace IntelOrca.Biohazard.Script.Compilation
 
             byte? subOpcode = null;
             var subIsa = default(Bio1ConstantTable.Re1SubIsa);
+            var subLength = 0;
             var bio1ConstantTable = _constantTable as Bio1ConstantTable;
             if (_currScriptKind == BioScriptKind.Event && bio1ConstantTable != null)
             {
                 // RE1 task-state opcodes (act_/tw_) are unique per ISA
-                subOpcode = bio1ConstantTable.FindSubOpcode(name, out var isa);
+                subOpcode = bio1ConstantTable.FindSubOpcode(name, out var isa, out subLength);
                 subIsa = isa;
             }
 
@@ -577,8 +578,8 @@ namespace IntelOrca.Biohazard.Script.Compilation
             _currentOpcode = opcode.Value;
             if (subOpcode != null)
             {
-                _currentOpcodeLength = bio1ConstantTable!.GetSubInstructionSize(subOpcode.Value, null, subIsa);
-                _currentOpcodeSignature = bio1ConstantTable!.GetSubOpcodeSignature(subOpcode.Value, subIsa);
+                _currentOpcodeLength = subLength;
+                _currentOpcodeSignature = bio1ConstantTable!.GetSubOpcodeSignature(subOpcode.Value, subIsa, subLength);
             }
             else
             {
