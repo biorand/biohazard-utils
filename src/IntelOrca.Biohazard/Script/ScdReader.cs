@@ -156,9 +156,9 @@ namespace IntelOrca.Biohazard.Script
                         continue;
                     }
 
-                    // FF terminates a task in any state (1 byte, unlike the
-                    // 2-byte top-level evt_finish form); control ops F6-FE
-                    // share the top-level encodings
+                    // FF terminates a task in any state and also ends the sub-state (1
+                    // byte everywhere); control ops F6-FE share the top-level
+                    // encodings
                     if ((byte)eventOpcode == 0xFF)
                     {
                         br.BaseStream.Position--;

@@ -164,7 +164,10 @@ namespace IntelOrca.Biohazard.Script
                     Re1EventOpcode.Sleep => 4,
                     Re1EventOpcode.For => 4,
                     Re1EventOpcode.Do => 2,
-                    Re1EventOpcode.Finish => 2,
+                    // FF finishes the task in any state: 1 byte (scd_event_loop
+                    // shared control case does PC += 1; the byte that usually
+                    // follows is 00 padding, not an operand)
+                    Re1EventOpcode.Finish => 1,
                     _ => 1,
                 };
             }
@@ -248,6 +251,7 @@ namespace IntelOrca.Biohazard.Script
                 0x89 => 2,
                 0x8A => 2,
                 0x8B => 1,
+                0xFF => 1,
                 _ => 0,
             };
         }
@@ -270,6 +274,7 @@ namespace IntelOrca.Biohazard.Script
                 0x09 => 2,
                 0x0A => 4,
                 0x0B => 8,
+                0xFF => 1,
                 _ => 0,
             };
         }
