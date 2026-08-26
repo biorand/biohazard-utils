@@ -26,6 +26,8 @@
         ActorIdle = 0x86,
         ActorFlagOp = 0x87,
         ActorParamSet = 0x88,
+        ActorActionA = 0x89,
+        ActorActionB = 0x8A,
         ActorEnd = 0x8B,
 
         // Control
