@@ -136,12 +136,12 @@ namespace IntelOrca.Biohazard.Script
             {
                 return (Re1EventOpcode)opcode switch
                 {
-                    Re1EventOpcode.Unk03 => 3,
+                    Re1EventOpcode.TweenBeginAlt => 3,
                     Re1EventOpcode.WorkSet => 3,
                     Re1EventOpcode.Fork => 4,
                     Re1EventOpcode.Block => 2,
                     Re1EventOpcode.Single => 2,
-                    Re1EventOpcode.Unk08 => 2,
+                    Re1EventOpcode.Chain => 2,
                     Re1EventOpcode.Disable => 2,
 
                     (Re1EventOpcode)0x80 => 1,

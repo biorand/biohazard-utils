@@ -167,7 +167,7 @@ namespace IntelOrca.Biohazard.Script
                         visitor.VisitBeginEventOpcode((int)(BaseOffset + br.BaseStream.Position), br.ReadBytes(2));
                         visitor.VisitEndEventOpcode();
                         break;
-                    case Re1EventOpcode.Unk81:
+                    case Re1EventOpcode.ActorMotion:
                     {
                         if (instructionPosition + 2 > scriptEnd)
                             goto trailing;
