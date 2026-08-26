@@ -19,6 +19,7 @@ namespace IntelOrca.Biohazard.Script
         private int _lastReturnLine;
         private Re1EventOpcode? _eventOpcode;
         private bool _eventBlockSub;
+        private Bio1ConstantTable.Re1SubIsa? _re1SubIsa;
 
         public bool AssemblyFormat => _sb.AssemblyFormat;
 
@@ -97,6 +98,7 @@ namespace IntelOrca.Biohazard.Script
                 case BioScriptKind.Event:
                     _kind = BioScriptKind.Event;
                     _eventOpcode = null;
+                    _re1SubIsa = null;
                     _sb.WriteLine();
                     break;
             }
@@ -197,6 +199,52 @@ namespace IntelOrca.Biohazard.Script
 
             var stream = new SpanStream(bytes);
             var br = new BinaryReader(stream);
+
+            // Mirror ScdReader's task states: after top-level ops 01/02/03 the
+            // byte space switches to the actor/tween sub-ISAs until the exit
+            // opcode. Control ops F6-FF keep their event-level names in any
+            // state.
+            if (Version == BioVersion.Biohazard1 && _kind == BioScriptKind.Event)
+            {
+                if (_re1SubIsa == null &&
+                    (eventOpcode == Re1EventOpcode.ActorBegin ||
+                     eventOpcode == Re1EventOpcode.TweenBegin ||
+                     eventOpcode == Re1EventOpcode.TweenBeginAlt))
+                {
+                    DiassembleGeneralOpcode(br, offset, (byte)eventOpcode, opcodeBytes.Length, isEventOpcode: true);
+                    _eventOpcode = eventOpcode;
+                    _re1SubIsa = eventOpcode == Re1EventOpcode.ActorBegin ?
+                        Bio1ConstantTable.Re1SubIsa.Actor :
+                        Bio1ConstantTable.Re1SubIsa.Tween;
+                    return;
+                }
+
+                if (_re1SubIsa != null && (bytes[0] < 0xF6 || bytes[0] == 0xFF))
+                {
+                    // NB: exit opcodes collide with event-level markers:
+                    // actor streams end on 8B, or 80 which falls through into
+                    // the 8B end; the tween ISA exits on byte 01, which is
+                    // ActorBegin at the top level. FF is the 1-byte task
+                    // terminator in any state.
+                    var exits =
+                        (_re1SubIsa == Bio1ConstantTable.Re1SubIsa.Actor && (bytes[0] == 0x8B || bytes[0] == 0x80 || bytes[0] == 0xFF)) ||
+                        (_re1SubIsa == Bio1ConstantTable.Re1SubIsa.Tween && (bytes[0] == 0x01 || bytes[0] == 0xFF));
+                    if (exits ||
+                        ((Bio1ConstantTable)_constantTable).GetSubOpcodeSignature(bytes[0], _re1SubIsa.Value) != "")
+                    {
+                        DiassembleGeneralOpcode(br, offset, bytes[0], opcodeBytes.Length, subIsa: _re1SubIsa);
+                        _eventOpcode = null;
+                        if (exits)
+                            _re1SubIsa = null;
+                        return;
+                    }
+                    // unknown sub-ISA opcode: mirror ScdReader's resume-to-
+                    // top-level (the VM's do/skip_if control flow can jump
+                    // over the stream end marker)
+                    _re1SubIsa = null;
+                }
+            }
+
             DiassembleGeneralOpcode(br, offset, (byte)eventOpcode, opcodeBytes.Length, isEventOpcode: true);
             _eventOpcode = eventOpcode;
         }
@@ -653,7 +701,7 @@ namespace IntelOrca.Biohazard.Script
         }
 
 
-        private void DiassembleGeneralOpcode(BinaryReader br, int offset, byte opcode, int instructionLength, bool isEventOpcode = false)
+        private void DiassembleGeneralOpcode(BinaryReader br, int offset, byte opcode, int instructionLength, bool isEventOpcode = false, Bio1ConstantTable.Re1SubIsa? subIsa = null)
         {
             var parameters = new List<object>();
             string opcodeName;
@@ -665,8 +713,21 @@ namespace IntelOrca.Biohazard.Script
 
             br.BaseStream.Position = originalStreamPosition + 1;
 
-            var signature = _constantTable.GetOpcodeSignature(opcode, isEventOpcode);
-            var expectedLength = _constantTable.GetInstructionSize(opcode, br, isEventOpcode);
+            string signature;
+            int expectedLength;
+            if (subIsa != null)
+            {
+                var bio1ConstantTable = (Bio1ConstantTable)_constantTable;
+                signature = bio1ConstantTable.GetSubOpcodeSignature(opcode, subIsa.Value);
+                // static size: a longer-than-declared span (variable-size ops)
+                // must fall through to the raw "unk" rendering below
+                expectedLength = bio1ConstantTable.GetSubInstructionSize(opcode, null, subIsa.Value);
+            }
+            else
+            {
+                signature = _constantTable.GetOpcodeSignature(opcode, isEventOpcode);
+                expectedLength = _constantTable.GetInstructionSize(opcode, br, isEventOpcode);
+            }
             if (expectedLength == 0 || expectedLength != instructionLength)
             {
                 signature = "";
@@ -681,7 +742,10 @@ namespace IntelOrca.Biohazard.Script
                     opcodeName = "unk";
                     parameters.Add(opcode);
                 }
-                foreach (var b in br.ReadBytes(instructionLength))
+                // the instruction may be longer than the table claims (e.g. a
+                // variable-size op): emit whatever bytes this instruction holds
+                var rawCount = (int)Math.Min(instructionLength, br.BaseStream.Length - br.BaseStream.Position);
+                foreach (var b in br.ReadBytes(rawCount))
                 {
                     parameters.Add(b);
                 }
