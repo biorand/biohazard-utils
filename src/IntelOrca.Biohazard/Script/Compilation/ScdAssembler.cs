@@ -552,21 +552,40 @@ namespace IntelOrca.Biohazard.Script.Compilation
                 return true;
             }
 
+            byte? subOpcode = null;
+            var subIsa = default(Bio1ConstantTable.Re1SubIsa);
+            var subLength = 0;
+            var bio1ConstantTable = _constantTable as Bio1ConstantTable;
+            if (_currScriptKind == BioScriptKind.Event && bio1ConstantTable != null)
+            {
+                // RE1 task-state opcodes (act_/tw_) are unique per ISA
+                subOpcode = bio1ConstantTable.FindSubOpcode(name, out var isa, out subLength);
+                subIsa = isa;
+            }
+
             byte? eventOpcode = null;
-            if (_currScriptKind == BioScriptKind.Event)
+            if (subOpcode == null && _currScriptKind == BioScriptKind.Event)
             {
                 eventOpcode = _constantTable.FindOpcode(name, isEventOpcode: true);
             }
 
-            var opcode = eventOpcode ?? _constantTable.FindOpcode(name, isEventOpcode: false);
+            var opcode = subOpcode ?? eventOpcode ?? _constantTable.FindOpcode(name, isEventOpcode: false);
             if (opcode == null)
             {
                 return false;
             }
-            _currentOpcodeIsEvent = eventOpcode != null;
+            _currentOpcodeIsEvent = eventOpcode != null || subOpcode != null;
             _currentOpcode = opcode.Value;
-            _currentOpcodeLength = _constantTable.GetInstructionSize(opcode.Value, null, _currentOpcodeIsEvent);
-            _currentOpcodeSignature = _constantTable.GetOpcodeSignature(opcode.Value, _currentOpcodeIsEvent);
+            if (subOpcode != null)
+            {
+                _currentOpcodeLength = subLength;
+                _currentOpcodeSignature = bio1ConstantTable!.GetSubOpcodeSignature(subOpcode.Value, subIsa, subLength);
+            }
+            else
+            {
+                _currentOpcodeLength = _constantTable.GetInstructionSize(opcode.Value, null, _currentOpcodeIsEvent);
+                _currentOpcodeSignature = _constantTable.GetOpcodeSignature(opcode.Value, _currentOpcodeIsEvent);
+            }
             var colonIndex = _currentOpcodeSignature.IndexOf(':');
             if (colonIndex == -1)
             {

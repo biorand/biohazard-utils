@@ -136,28 +136,38 @@ namespace IntelOrca.Biohazard.Script
             {
                 return (Re1EventOpcode)opcode switch
                 {
-                    Re1EventOpcode.Unk03 => 3,
+                    // 03 is a 1-byte state marker (validated x1898 across US rooms);
+                    // everything after it belongs to the tween ISA
+                    Re1EventOpcode.TweenBeginAlt => 1,
                     Re1EventOpcode.WorkSet => 3,
                     Re1EventOpcode.Fork => 4,
                     Re1EventOpcode.Block => 2,
                     Re1EventOpcode.Single => 2,
-                    Re1EventOpcode.Unk08 => 2,
+                    Re1EventOpcode.Chain => 2,
                     Re1EventOpcode.Disable => 2,
 
+                    // legacy/defensive: these bytes only appear inside state-1
+                    // actor streams (see _actorOpcodes); sizes kept for callers
+                    // that scan without task-state tracking
                     (Re1EventOpcode)0x80 => 1,
                     (Re1EventOpcode)0x81 => 2,
-                    (Re1EventOpcode)0x83 => 8,
+                    (Re1EventOpcode)0x83 => 7,
                     (Re1EventOpcode)0x84 => 4,
                     (Re1EventOpcode)0x85 => 4,
                     (Re1EventOpcode)0x87 => 4,
                     (Re1EventOpcode)0x88 => 4,
+                    (Re1EventOpcode)0x89 => 2,
+                    (Re1EventOpcode)0x8A => 2,
 
                     (Re1EventOpcode)0xE8 => 4,
 
                     Re1EventOpcode.Sleep => 4,
                     Re1EventOpcode.For => 4,
                     Re1EventOpcode.Do => 2,
-                    Re1EventOpcode.Finish => 2,
+                    // FF finishes the task in any state: 1 byte (scd_event_loop
+                    // shared control case does PC += 1; the byte that usually
+                    // follows is 00 padding, not an operand)
+                    Re1EventOpcode.Finish => 1,
                     _ => 1,
                 };
             }
@@ -186,6 +196,159 @@ namespace IntelOrca.Biohazard.Script
 
                 if (name == opcodeName)
                     return (byte)i;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The instruction set executed inside an event task sub-state: after a
+        /// top-level "01" the game runs actor commands (event_state_1_logic),
+        /// after "02"/"03" it runs tween ops (event_state_2_logic), until the
+        /// stream's exit opcode. Sizes validated against all US room data.
+        /// </summary>
+        public enum Re1SubIsa
+        {
+            Actor,
+            Tween,
+        }
+
+        public string GetSubOpcodeSignature(byte opcode, Re1SubIsa isa)
+        {
+            var table = isa == Re1SubIsa.Actor ? _actorOpcodes : _tweenOpcodes;
+            if (opcode < table.Length)
+                return table[opcode];
+            return "";
+        }
+
+        // act_motion is the single variable-size sub-ISA op: 2 bytes when the
+        // param low nibble is clear (motion id only), else 10 bytes (motion id
+        // plus a target position / entity + flags)
+        private static readonly (string name, byte opcode, Re1SubIsa isa, int length)[] _subOpcodeExt =
+        {
+            ("act_motion_path", 0x81, Re1SubIsa.Actor, 10),
+        };
+
+        public string GetSubOpcodeSignature(byte opcode, Re1SubIsa isa, int instructionLength)
+        {
+            foreach (var ext in _subOpcodeExt)
+            {
+                if (ext.opcode == opcode && ext.isa == isa && ext.length == instructionLength)
+                {
+                    return ext.name switch
+                    {
+                        // TODO 0x93: word0/word1 become selector + index instead
+                        // of position x/y
+                        "act_motion_path" => "act_motion_path:uUUUuu",
+                        _ => "",
+                    };
+                }
+            }
+            return GetSubOpcodeSignature(opcode, isa);
+        }
+
+        public bool IsValidSubInstructionLength(byte opcode, Re1SubIsa isa, int length)
+        {
+            foreach (var ext in _subOpcodeExt)
+            {
+                if (ext.opcode == opcode && ext.isa == isa && ext.length == length)
+                    return true;
+            }
+            return GetSubInstructionSize(opcode, null, isa) == length;
+        }
+
+        // TODO 81: +8 payload bytes when the low nibble of the param byte is set
+        private int GetActorSize(byte opcode, BinaryReader? br)
+        {
+            if (opcode == 0x81 && br != null)
+            {
+                // br is positioned just past the opcode byte, so the param is
+                // at the fork's current position
+                using (var fork = br.Fork())
+                {
+                    if (fork.BaseStream.Position < fork.BaseStream.Length)
+                    {
+                        var param = fork.ReadByte();
+                        return 2 + ((param & 0x0F) != 0 ? 8 : 0);
+                    }
+                }
+            }
+            return opcode switch
+            {
+                0x00 => 1,
+                0x80 => 1,
+                0x81 => 2,
+                0x82 => 1,
+                0x83 => 7,
+                0x84 => 4,
+                0x85 => 4,
+                0x86 => 1,
+                0x87 => 4,
+                0x88 => 4,
+                0x89 => 2,
+                0x8A => 2,
+                0x8B => 1,
+                0xFF => 1,
+                _ => 0,
+            };
+        }
+
+        public int GetSubInstructionSize(byte opcode, BinaryReader? br, Re1SubIsa isa)
+        {
+            if (isa == Re1SubIsa.Actor)
+                return GetActorSize(opcode, br);
+            return opcode switch
+            {
+                0x00 => 1,
+                0x01 => 1,
+                0x02 => 1,
+                0x03 => 1,
+                0x04 => 1,
+                0x05 => 4,
+                0x06 => 4,
+                0x07 => 8,
+                0x08 => 3,
+                0x09 => 2,
+                0x0A => 4,
+                0x0B => 8,
+                0xFF => 1,
+                _ => 0,
+            };
+        }
+
+        public byte? FindSubOpcode(string name, out Re1SubIsa isa, out int length)
+        {
+            isa = Re1SubIsa.Actor;
+            length = 0;
+            for (var pass = 0; pass < 2; pass++)
+            {
+                var table = pass == 0 ? _actorOpcodes : _tweenOpcodes;
+                for (int i = 0; i < table.Length; i++)
+                {
+                    var signature = table[i];
+                    if (signature == "")
+                        continue;
+
+                    var opcodeName = signature;
+                    var colonIndex = signature.IndexOf(':');
+                    if (colonIndex != -1)
+                        opcodeName = signature.Substring(0, colonIndex);
+
+                    if (name == opcodeName)
+                    {
+                        isa = pass == 0 ? Re1SubIsa.Actor : Re1SubIsa.Tween;
+                        length = GetSubInstructionSize((byte)i, null, isa);
+                        return (byte)i;
+                    }
+                }
+            }
+            foreach (var ext in _subOpcodeExt)
+            {
+                if (name == ext.name)
+                {
+                    isa = ext.isa;
+                    length = ext.length;
+                    return ext.opcode;
+                }
             }
             return null;
         }
@@ -367,7 +530,7 @@ namespace IntelOrca.Biohazard.Script
             "door_aot_set:uIIIIuuuuurIIIItu",
             "aot_set:uIIIIsuuuuuuu",
             "nop:u",
-            "",
+            "scene_setup",
             "testitem:t",
             "testpickup:t",
             "aot_reset:usuIII",
@@ -375,77 +538,77 @@ namespace IntelOrca.Biohazard.Script
             "evt_exec:uup",
             "bgm_play:u",
             "bgm_stop:u",
-            "",
+            "se_play_3d",
             "item_aot_set:uIIIItuuuuuuuuuuuuuuu",
             "setbyte:uuu",
             "item_ck:t",
             "enemy:euuuuuuIuuIIIuuuu",
-            "",
-            "",
+            "timer_setup",
+            "ck_last_item",
             "xa_on",
             "obj:uuuIIIIuuuuuuuuuuuuuuuu",
             "dir_set:uIIIIII",
             "pos_set:uIIIIII",
-            "",
+            "ck_item_count",
             "cut_auto",
             "aot_on:usu",
+            "aot_switch",
             "",
-            "",
-            "",
-            "",
+            "snd_fadeout",
+            "eml_state",
             "movie_on:u",
             "effect",
-            "",
+            "plw_anim",
             "remove_item:t",
             "give_item:uuu",
             "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
+            "se_volume",
+            "inst_cfg",
+            "setw",
+            "nop_wide",
+            "sys_multi",
+            "model_op",
+            "objtbl_b_set",
+            "ck_anim",
+            "tbl37_set",
+            "ck_bits",
+            "get_eml_state",
+            "msgnode_set",
+            "eml_rot",
+            "ck_counter",
+            "effect_tracked",
+            "effect_kill_a",
+            "ck_tween",
+            "obj_xfm",
+            "spd_set",
+            "effect_kill_b",
+            "se_rate",
+            "task_kill",
+            "spd_add",
+            "msg_list",
+            "eml_pos",
+            "effect_clear",
+            "bank_bit",
+            "bgm_bank_down",
+            "bgm_bank_up",
             "swap_var",
-            "",
-            "",
-            "",
-            "", // last
+            "objs_hide",
+            "mass_mask",
+            "xa_flag",
+            "xa_flag_ck",
         };
 
         private string[] _eventOpcodes = new string[]
         {
             "evt_nop",
-            "evt_01",
-            "evt_02",
-            "evt_03",
+            "evt_actor_begin",
+            "evt_tween_begin",
+            "evt_tween_begin_alt",
             "evt_work_set:wu",
             "evt_fork:upu",
             "evt_block:u",
             "evt_single:u",
-            "evt_08",
+            "evt_chain",
             "evt_disable:u",
             "",
             "",
@@ -565,6 +728,18 @@ namespace IntelOrca.Biohazard.Script
             "",
             "",
             "",
+            "evt_actor_reset",
+            "evt_actor_motion",
+            "evt_actor_motion_bitclr",
+            "evt_actor_anim_seq",
+            "evt_actor_anim_flags",
+            "evt_actor_anim_set",
+            "evt_actor_idle",
+            "evt_actor_flag_op",
+            "evt_actor_param_set",
+            "evt_actor_action_a",
+            "evt_actor_action_b",
+            "evt_actor_end",
             "",
             "",
             "",
@@ -671,28 +846,543 @@ namespace IntelOrca.Biohazard.Script
             "",
             "",
             "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "evt_plc_dest",
-            "evt_plc_motion",
-            "",
-            "evt_plc_ret",
-            "",
-            "evt_plc_rotate",
-            "",
-            "evt_F6",
-            "evt_F7",
+            "evt_push_cond",
+            "evt_skip_if",
             "evt_sleep",
-            "evt_F9",
+            "evt_sleep_tick",
             "evt_for:uU",
             "evt_fornext",
             "evt_do:u",
             "evt_dountil",
             "evt_next",
             "evt_finish"
+        };
+
+        // State-1 "actor command" stream (event_state_1_logic), entered by the
+        // top-level op 01; exits on 8B (80 falls through into it). Control ops
+        // F6-FF are valid here too and keep their evt_ names. Best guesses are
+        // marked TODO.
+        private string[] _actorOpcodes = new string[]
+        {
+            "act_nop", /* 00 */
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "act_reset", /* 80 resets +0x85 then ends the stream (falls through into act_end) */
+            "act_motion:u", /* 81 (10-byte target form: act_motion_path) */
+            "act_motion_bitclr", /* 82 */
+            "act_anim_seq:UUU", /* 83 */
+            "act_anim_flags:bbb", /* 84 */
+            "act_anim_set:bbb", /* 85 */
+            "act_idle", /* 86 */
+            "act_flag_op", /* 87 */
+            "act_param_set:Uu", /* 88 */
+            "act_action_a:u", /* 89 */
+            "act_action_b:u", /* 8A */
+            "act_end", /* 8B */
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "act_finish" /* FF */
+        };
+
+        // State-2 "tween" stream (event_state_2_logic), entered by top-level
+        // ops 02/03; exits on 01. Control ops F6-FF are valid here too and
+        // keep their evt_ names. Best guesses are marked TODO.
+        private string[] _tweenOpcodes = new string[]
+        {
+            "tw_nop", /* 00 */
+            "tw_end", /* 01 */
+            "tw_pos_add", /* 02 */
+            "tw_rot_add", /* 03 */
+            "tw_pos_rot_add", /* 04 */
+            "tw_set_pos:uuu", /* 05 */
+            "tw_set_rot:uuu", /* 06 */
+            "tw_abs_pos:UUUu", /* 07 */
+            "tw_set_field:ub", /* 08 */
+            "tw_set_8a:u", /* 09 */
+            "tw_set_sel:uuu", /* 0A */
+            "tw_abs_rot:UUUu", /* 0B */
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "tw_finish" /* FF */
         };
 
         private static int[] _instructionSizes1 = new int[]
