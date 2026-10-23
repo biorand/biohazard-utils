@@ -16,7 +16,7 @@ namespace IntelOrca.Biohazard.Script
         private int _expressionCount;
         private IConstantTable _constantTable = new Bio1ConstantTable();
         private BioScriptKind _kind;
-        private int _lastReturnLine;
+        private int _lastReturnLine = -1;
         private Re1EventOpcode? _eventOpcode;
         private bool _eventBlockSub;
         private Bio1ConstantTable.Re1SubIsa? _re1SubIsa;
@@ -180,7 +180,9 @@ namespace IntelOrca.Biohazard.Script
             }
 
             _sb.CloseBlock();
-            _sb.RemoveLine(_lastReturnLine);
+            if (_lastReturnLine >= 0 && _lastReturnLine < _sb.LineCount)
+                _sb.RemoveLine(_lastReturnLine);
+            _lastReturnLine = -1;
         }
 
         public override void VisitBeginEventOpcode(int offset, ReadOnlySpan<byte> opcodeBytes)
@@ -672,7 +674,7 @@ namespace IntelOrca.Biohazard.Script
                 {
                     br.ReadByte();
                     _lastReturnLine = sb.LineCount;
-                    sb.WriteLine($"evt_end(0);");
+                    sb.WriteLine($"end();");
                     break;
                 }
                 case 0x01:
@@ -694,8 +696,57 @@ namespace IntelOrca.Biohazard.Script
                 case 0x03:
                     _sb.CloseBlock();
                     break;
-                case 0xF4:
+                case 0xF3:
+                    // alternate while end used when a common control block
+                    // should keep running after the loop
+                    _sb.CloseBlock();
                     break;
+                case 0xF4:
+                    // common-control next marker; not part of the visible program
+                    break;
+                case 0xF8:
+                {
+                    // sleep: [F8][F9][u16 frames]
+                    br.ReadByte();
+                    var frames = br.ReadUInt16();
+                    sb.WriteLine($"sleep({frames});");
+                    break;
+                }
+                case 0xFA:
+                {
+                    // for: [FA][?][u16 count]
+                    br.ReadByte();
+                    var count = br.ReadUInt16();
+                    sb.WriteLine($"repeat ({count})");
+                    _sb.OpenBlock();
+                    break;
+                }
+                case 0xFB:
+                    _sb.CloseBlock();
+                    break;
+                case 0xFC:
+                {
+                    // while: [FC][relative end offset], followed by the
+                    // condition opcodes and loop body
+                    br.ReadByte();
+                    sb.Write("while (");
+                    _constructingBinaryExpression = true;
+                    _expressionCount = 0;
+                    break;
+                }
+                case 0xFD:
+                    _sb.CloseBlock();
+                    break;
+                case 0xFE:
+                    sb.WriteLine("event_next();");
+                    break;
+                case 0xFF:
+                {
+                    br.ReadByte();
+                    _lastReturnLine = sb.LineCount;
+                    sb.WriteLine("event_end(0);");
+                    break;
+                }
             }
             return true;
         }
@@ -733,6 +784,18 @@ namespace IntelOrca.Biohazard.Script
                 {
                     signature = "";
                 }
+            }
+
+            if (Version == BioVersion.BiohazardCv &&
+                _constantTable is BioCvConstantTable cvConstantTable &&
+                BioCvConstantTable.IsSubOpcodeParent(opcode) &&
+                instructionLength >= 2)
+            {
+                var position = br.BaseStream.Position;
+                br.BaseStream.Position = originalStreamPosition + 1;
+                var subOpcode = br.ReadByte();
+                br.BaseStream.Position = position;
+                signature = cvConstantTable.GetSubOpcodeSignature(opcode, subOpcode, instructionLength);
             }
 
             var colonIndex = signature.IndexOf(':');
@@ -837,6 +900,12 @@ namespace IntelOrca.Biohazard.Script
                                 var bitArray = temp >> 5;
                                 var number = temp & 0b11111;
                                 parameters.Add($"{bitArray << 5} | {number}");
+                                break;
+                            }
+                            case 'x':
+                            {
+                                // padding / tag byte that carries no displayable operand
+                                br.ReadByte();
                                 break;
                             }
                             case 'u':

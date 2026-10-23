@@ -134,9 +134,17 @@ namespace IntelOrca.Biohazard.Script
 
             Write(name);
             if (AssemblyFormat)
-                MoveToColumn(asmColumn + 24);
+            {
+                var targetColumn = asmColumn + 24;
+                if (_line.Length < targetColumn)
+                    MoveToColumn(targetColumn);
+                else if (args.Length != 0)
+                    Write(" ");
+            }
             else
+            {
                 Write("(");
+            }
             for (int i = 0; i < args.Length; i++)
             {
                 Write(args[i].ToString());
