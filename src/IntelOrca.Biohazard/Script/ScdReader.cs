@@ -522,19 +522,11 @@ namespace IntelOrca.Biohazard.Script
 
                 var functionOffset = functionOffsets[i];
                 var functionEnd = functionOffsets[i + 1];
-                var functionEndMin = functionOffset;
-                var isEnd = false;
                 br.BaseStream.Position = functionOffset;
                 while (br.BaseStream.Position < functionEnd)
                 {
                     var instructionPosition = (int)br.BaseStream.Position;
                     var remainingSize = functionEnd - instructionPosition;
-                    if (isEnd)
-                    {
-                        visitor.VisitTrailingData(BaseOffset + instructionPosition, br.ReadBytes(remainingSize));
-                        break;
-                    }
-
                     var opcode = br.ReadByte();
                     var instructionSize = constantTable.GetInstructionSize(opcode, br);
                     if (instructionSize == 0 || instructionSize > remainingSize)
@@ -550,28 +542,6 @@ namespace IntelOrca.Biohazard.Script
                     }
 
                     visitor.VisitOpcode(BaseOffset + instructionPosition, opcodeBytes);
-
-                    // if (i == numFunctions - 1)
-                    // {
-                    //     switch ((OpcodeV2)opcode)
-                    //     {
-                    //         case OpcodeV2.EvtEnd:
-                    //             if (instructionPosition >= functionEndMin && ifStack == 0)
-                    //                 isEnd = true;
-                    //             break;
-                    //         case OpcodeV2.IfelCk:
-                    //             functionEndMin = instructionPosition + BitConverter.ToUInt16(opcodeBytes, 2);
-                    //             ifStack++;
-                    //             break;
-                    //         case OpcodeV2.ElseCk:
-                    //             ifStack--;
-                    //             functionEndMin = instructionPosition + BitConverter.ToUInt16(opcodeBytes, 2);
-                    //             break;
-                    //         case OpcodeV2.EndIf:
-                    //             ifStack--;
-                    //             break;
-                    //     }
-                    // }
                 }
 
                 visitor.VisitEndSubroutine(i);
