@@ -22,6 +22,57 @@ namespace IntelOrca.Biohazard
             return ctx.Compress(source, searchBufferSize);
         }
 
+        /// <summary>
+        /// Creates a valid but uncompressed PRS stream. The PS2 PRS format allows
+        /// a stream made only of literal bytes; the decoder does not care about
+        /// the compression ratio. This is much faster than searching for matches
+        /// and is useful for output where the size of the original data is not
+        /// limited like the PS2's. The output is about 12.5% larger than the input.
+        /// </summary>
+        public static byte[] Store(ReadOnlySpan<byte> source)
+        {
+            var n = source.Length;
+            var tail = n % 8;
+            var overhead = tail == 0 ? 3 : tail == 7 ? 4 : 3;
+            var result = new byte[n + (n / 8) + overhead];
+            var p = 0;
+            var i = 0;
+
+            // Eight literal bytes per control byte (0xFF = 11111111b).
+            for (; i + 8 <= n; i += 8)
+            {
+                result[p++] = 0xFF;
+                source.Slice(i, 8).CopyTo(result.AsSpan(p));
+                p += 8;
+            }
+
+            var remaining = n - i;
+            if (remaining == 0)
+            {
+                // 0 1 + u16 0: end of stream.
+                result[p++] = 0x02;
+                result[p++] = 0x00;
+                result[p++] = 0x00;
+            }
+            else
+            {
+                // Mark the remaining literals with 1 bits. If the end marker
+                // fits in this control byte, put it directly after them.
+                var control = (1 << remaining) - 1;
+                if (remaining < 7)
+                    control |= 1 << (remaining + 1);
+                result[p++] = (byte)control;
+                source.Slice(i, remaining).CopyTo(result.AsSpan(p));
+                p += remaining;
+                if (remaining == 7)
+                    result[p++] = 0x01;
+                result[p++] = 0x00;
+                result[p++] = 0x00;
+            }
+
+            return result;
+        }
+
         private ref struct PrsDecompressContext
         {
             private ReadOnlySpan<byte> _src;
