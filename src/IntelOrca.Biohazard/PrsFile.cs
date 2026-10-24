@@ -22,6 +22,16 @@ namespace IntelOrca.Biohazard
             return new PrsFile(Prs.Compress(uncompressed.ToArray(), bufferSize));
         }
 
+        /// <summary>
+        /// Wraps the uncompressed data in a valid PRS stream without compressing
+        /// it. This is faster than <see cref="Compress"/> and produces a stream
+        /// about 12.5% larger than the input.
+        /// </summary>
+        public static PrsFile Store(ReadOnlyMemory<byte> uncompressed)
+        {
+            return new PrsFile(Prs.Store(uncompressed.Span));
+        }
+
         public PrsFile(ReadOnlyMemory<byte> compressed)
         {
             _compressed = compressed;
