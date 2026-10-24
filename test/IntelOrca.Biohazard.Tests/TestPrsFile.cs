@@ -3,7 +3,7 @@ using Xunit;
 
 namespace IntelOrca.Biohazard.Tests
 {
-    public class TestPrs
+    public class TestPrsFile
     {
         [Fact]
         public void StoreRoundtrip()
