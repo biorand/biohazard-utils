@@ -75,7 +75,7 @@ namespace IntelOrca.Biohazard
         public bool Exists(string path)
         {
             var normalizedPath = NormalizePath(path);
-            if (File.Exists(normalizedPath))
+            if (ResolvePathCaseInsensitive(normalizedPath) != null)
                 return true;
 
             return _re3Paths.TryGetValue(normalizedPath, out _);
@@ -84,8 +84,9 @@ namespace IntelOrca.Biohazard
         public Stream GetStream(string path)
         {
             var normalizedPath = NormalizePath(path);
-            if (File.Exists(normalizedPath))
-                return new FileStream(normalizedPath, FileMode.Open, FileAccess.Read);
+            var resolvedPath = ResolvePathCaseInsensitive(normalizedPath);
+            if (resolvedPath != null)
+                return new FileStream(resolvedPath, FileMode.Open, FileAccess.Read);
 
             if (_re3Paths.TryGetValue(normalizedPath, out var getStream))
             {
@@ -151,6 +152,60 @@ namespace IntelOrca.Biohazard
                     Path.AltDirectorySeparatorChar);
             }
             return normalized;
+        }
+
+        /// <summary>
+        /// Resolves a path segment by segment with case-insensitive matching.
+        /// Windows filesystems already do this; Linux does not, and the classic
+        /// game data mixes file name casing (for example Room1061.rdt).
+        /// </summary>
+        private static string? ResolvePathCaseInsensitive(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return null;
+
+            if (File.Exists(path))
+                return path;
+
+            try
+            {
+                var fullPath = Path.GetFullPath(path);
+                var root = Path.GetPathRoot(fullPath);
+                if (string.IsNullOrEmpty(root))
+                    return null;
+
+                var current = root;
+                var relative = fullPath[root.Length..];
+                var segments = relative.Split(
+                    new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+                    StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var segment in segments)
+                {
+                    if (!Directory.Exists(current))
+                        return null;
+
+                    string? match = null;
+                    foreach (var entry in Directory.EnumerateFileSystemEntries(current))
+                    {
+                        if (string.Equals(Path.GetFileName(entry), segment, StringComparison.OrdinalIgnoreCase))
+                        {
+                            match = entry;
+                            break;
+                        }
+                    }
+
+                    if (match == null)
+                        return null;
+                    current = match;
+                }
+
+                return File.Exists(current) ? current : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
