@@ -31,14 +31,16 @@ namespace IntelOrca.Biohazard
 
         public string GetDataPath(string path)
         {
-            return NormalizePath(Path.Combine(_dataPath, path));
+            var fullPath = NormalizePath(Path.Combine(_dataPath, path));
+            return ResolvePathCaseInsensitive(fullPath) ?? ResolveParentCaseInsensitive(fullPath);
         }
 
         public string GetModPath(string path)
         {
             if (_modPath == null)
                 throw new InvalidOperationException("No mod path was specified for this repository.");
-            return NormalizePath(Path.Combine(_modPath, path));
+            var fullPath = NormalizePath(Path.Combine(_modPath, path));
+            return ResolvePathCaseInsensitive(fullPath) ?? ResolveParentCaseInsensitive(fullPath);
         }
 
         public void AddRE3Archive(string path)
@@ -85,7 +87,7 @@ namespace IntelOrca.Biohazard
         {
             var normalizedPath = NormalizePath(path);
             var resolvedPath = ResolvePathCaseInsensitive(normalizedPath);
-            if (resolvedPath != null)
+            if (resolvedPath != null && File.Exists(resolvedPath))
                 return new FileStream(resolvedPath, FileMode.Open, FileAccess.Read);
 
             if (_re3Paths.TryGetValue(normalizedPath, out var getStream))
@@ -159,7 +161,7 @@ namespace IntelOrca.Biohazard
         /// Windows filesystems already do this; Linux does not, and the classic
         /// game data mixes file name casing (for example Room1061.rdt).
         /// </summary>
-        private static string? ResolvePathCaseInsensitive(string path)
+        public static string? ResolvePathCaseInsensitive(string path)
         {
             if (string.IsNullOrEmpty(path))
                 return null;
@@ -188,10 +190,22 @@ namespace IntelOrca.Biohazard
                     string? match = null;
                     foreach (var entry in Directory.EnumerateFileSystemEntries(current))
                     {
-                        if (string.Equals(Path.GetFileName(entry), segment, StringComparison.OrdinalIgnoreCase))
+                        if (string.Equals(Path.GetFileName(entry), segment, StringComparison.Ordinal))
                         {
                             match = entry;
                             break;
+                        }
+                    }
+
+                    if (match == null)
+                    {
+                        foreach (var entry in Directory.EnumerateFileSystemEntries(current))
+                        {
+                            if (string.Equals(Path.GetFileName(entry), segment, StringComparison.OrdinalIgnoreCase))
+                            {
+                                match = entry;
+                                break;
+                            }
                         }
                     }
 
@@ -200,12 +214,22 @@ namespace IntelOrca.Biohazard
                     current = match;
                 }
 
-                return File.Exists(current) ? current : null;
+                return (File.Exists(current) || Directory.Exists(current)) ? current : null;
             }
             catch
             {
                 return null;
             }
+        }
+
+        private static string ResolveParentCaseInsensitive(string path)
+        {
+            var directory = Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(directory))
+                return path;
+
+            var resolvedDirectory = ResolvePathCaseInsensitive(directory) ?? directory;
+            return Path.Combine(resolvedDirectory, Path.GetFileName(path));
         }
     }
 }
