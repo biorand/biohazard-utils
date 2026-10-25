@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace IntelOrca.Biohazard
 {
@@ -37,6 +36,8 @@ namespace IntelOrca.Biohazard
 
         public string GetModPath(string path)
         {
+            if (_modPath == null)
+                throw new InvalidOperationException("No mod path was specified for this repository.");
             return NormalizePath(Path.Combine(_modPath, path));
         }
 
@@ -45,7 +46,7 @@ namespace IntelOrca.Biohazard
             var re3Archive = new RE3Archive(path);
             _re3Archives.Add(re3Archive);
 
-            var dir = Path.GetDirectoryName(path);
+            var dir = Path.GetDirectoryName(path) ?? string.Empty;
             for (int i = 0; i < re3Archive.NumFiles; i++)
             {
                 var path1 = Path.Combine(dir, re3Archive[i]);
@@ -62,12 +63,10 @@ namespace IntelOrca.Biohazard
             foreach (var kvp in _re3Paths)
             {
                 var filePath = kvp.Key;
-                if (filePath.StartsWith(path, StringComparison.OrdinalIgnoreCase))
+                var directory = Path.GetDirectoryName(filePath);
+                if (string.Equals(directory, path, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (filePath.IndexOf('\\', path.Length + 1) == -1)
-                    {
-                        result.Add(filePath);
-                    }
+                    result.Add(filePath);
                 }
             }
             return result.ToArray();
@@ -75,19 +74,19 @@ namespace IntelOrca.Biohazard
 
         public bool Exists(string path)
         {
-            if (File.Exists(path))
+            var normalizedPath = NormalizePath(path);
+            if (File.Exists(normalizedPath))
                 return true;
 
-            var normalizedPath = NormalizePath(path);
             return _re3Paths.TryGetValue(normalizedPath, out _);
         }
 
         public Stream GetStream(string path)
         {
-            if (File.Exists(path))
-                return new FileStream(path, FileMode.Open, FileAccess.Read);
-
             var normalizedPath = NormalizePath(path);
+            if (File.Exists(normalizedPath))
+                return new FileStream(normalizedPath, FileMode.Open, FileAccess.Read);
+
             if (_re3Paths.TryGetValue(normalizedPath, out var getStream))
             {
                 return getStream();
@@ -136,17 +135,22 @@ namespace IntelOrca.Biohazard
 
         private static string NormalizePath(string path)
         {
-            var sb = new StringBuilder();
-            foreach (var ch in path)
+            if (string.IsNullOrEmpty(path))
+                return string.Empty;
+
+            var normalized = path
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar);
+
+            // Never trim the separator from a root path such as "/" or "C:\".
+            var root = Path.GetPathRoot(normalized) ?? string.Empty;
+            if (normalized.Length > root.Length)
             {
-                if (ch == '/')
-                    sb.Append('\\');
-                else
-                    sb.Append(ch);
+                normalized = normalized.TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar);
             }
-            if (sb[sb.Length - 1] == '\\')
-                sb.Remove(sb.Length - 1, 1);
-            return sb.ToString();
+            return normalized;
         }
     }
 }
