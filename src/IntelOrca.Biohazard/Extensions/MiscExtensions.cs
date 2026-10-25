@@ -82,13 +82,13 @@ namespace IntelOrca.Biohazard
             }
         }
 
-        public static unsafe T ReadStruct<T>(this BinaryReader br) where T : struct
+        public static T ReadStruct<T>(this BinaryReader br) where T : struct
         {
-            var bytes = br.ReadBytes(Marshal.SizeOf<T>());
-            fixed (byte* b = bytes)
-            {
-                return Marshal.PtrToStructure<T>((IntPtr)b);
-            }
+            var size = Marshal.SizeOf<T>();
+            var bytes = br.ReadBytes(size);
+            if (bytes.Length != size)
+                throw new EndOfStreamException();
+            return MemoryMarshal.Read<T>(bytes);
         }
 
         public static unsafe T Write<T>(this BinaryWriter bw, T structure) where T : struct
